@@ -1,6 +1,10 @@
 import type { VehicleEntryStatus } from '@prisma/client';
 import { ApiError } from '../../utils/ApiError';
+import { roundCurrency } from '../../utils/money';
 import { vehiclesRepository } from '../vehicles/vehicles.repository';
+import { laborRepository } from '../labor/labor.repository';
+import { partsRepository } from '../parts/parts.repository';
+import { costsRepository } from '../costs/costs.repository';
 import { entriesRepository } from './entries.repository';
 import type {
   ChangeEntryStatusInput,
@@ -31,6 +35,30 @@ export const entriesService = {
       throw ApiError.notFound('Vehicle entry not found.');
     }
     return entry;
+  },
+
+  async getEstimate(id: string) {
+    const entry = await entriesRepository.findById(id);
+    if (!entry) {
+      throw ApiError.notFound('Vehicle entry not found.');
+    }
+
+    const [laborItems, parts, otherCosts] = await Promise.all([
+      laborRepository.findByEntryId(id),
+      partsRepository.findByEntryId(id),
+      costsRepository.findByEntryId(id),
+    ]);
+
+    const laborTotal = roundCurrency(laborItems.reduce((sum, item) => sum + Number(item.total), 0));
+    const partsTotal = roundCurrency(parts.reduce((sum, item) => sum + Number(item.total), 0));
+    const otherCostsTotal = roundCurrency(otherCosts.reduce((sum, item) => sum + Number(item.amount), 0));
+
+    return {
+      labor: { items: laborItems, total: laborTotal },
+      parts: { items: parts, total: partsTotal },
+      otherCosts: { items: otherCosts, total: otherCostsTotal },
+      grandTotal: roundCurrency(laborTotal + partsTotal + otherCostsTotal),
+    };
   },
 
   async getHistory(id: string) {

@@ -25,6 +25,11 @@ export const entriesController = {
     sendSuccess(res, { message: 'Vehicle entry history retrieved successfully.', data: history });
   },
 
+  async getEstimate(req: Request, res: Response) {
+    const estimate = await entriesService.getEstimate(req.params.id as string);
+    sendSuccess(res, { message: 'Vehicle entry estimate retrieved successfully.', data: estimate });
+  },
+
   async create(req: Request, res: Response) {
     const input = createEntrySchema.parse(req.body);
     const entry = await entriesService.createEntry(input, req.user!.id);
