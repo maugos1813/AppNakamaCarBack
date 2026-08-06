@@ -1,0 +1,509 @@
+// Prisma schema — Carrozzeria backend
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  // Pooled connection (via Neon's PgBouncer) — used by the app at runtime.
+  url       = env("DATABASE_URL")
+  // Unpooled/direct connection — required by Prisma to run migrations.
+  directUrl = env("DIRECT_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Auth / Staff
+// ---------------------------------------------------------------------------
+
+model Role {
+  id          String  @id @default(cuid())
+  name        String  @unique
+  description String?
+
+  users User[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("roles")
+}
+
+model User {
+  id           String    @id @default(cuid())
+  fullName     String
+  email        String    @unique
+  passwordHash String
+  phone        String?
+  isActive     Boolean   @default(true)
+  lastLoginAt  DateTime?
+
+  roleId String
+  role   Role   @relation(fields: [roleId], references: [id], onDelete: Restrict)
+
+  receivedEntries  VehicleEntry[]  @relation("EntryReceivedBy")
+  uploadedPhotos   VehiclePhoto[]
+  assignedStages   RepairStage[]
+  historyEvents    RepairHistory[]
+  recordedPayments Payment[]
+  notifications    Notification[]
+  activityLogs     ActivityLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([roleId])
+  @@map("users")
+}
+
+// ---------------------------------------------------------------------------
+// Clients / Vehicles
+// ---------------------------------------------------------------------------
+
+model Client {
+  id          String  @id @default(cuid())
+  isCompany   Boolean @default(false)
+  fullName    String
+  companyName String?
+
+  // Italian tax identifiers — codice fiscale (individuals) / partita IVA (businesses)
+  fiscalCode String? @unique
+  vatNumber  String? @unique
+
+  email String?
+  phone String
+
+  addressLine String?
+  city        String?
+  postalCode  String?
+  province    String?
+  country     String  @default("IT")
+
+  notes String?
+
+  vehicles      Vehicle[]
+  invoices      Invoice[]
+  notifications Notification[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([fullName])
+  @@map("clients")
+}
+
+model Vehicle {
+  id           String  @id @default(cuid())
+  licensePlate String  @unique
+  vin          String? @unique
+  make         String
+  model        String
+  year         Int?
+  color        String?
+  fuelType     String?
+  notes        String?
+
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Restrict)
+
+  entries VehicleEntry[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([clientId])
+  @@map("vehicles")
+}
+
+// ---------------------------------------------------------------------------
+// Repair job (one visit/case for a vehicle)
+// ---------------------------------------------------------------------------
+
+enum FuelLevel {
+  EMPTY
+  QUARTER
+  HALF
+  THREE_QUARTERS
+  FULL
+}
+
+enum VehicleEntryStatus {
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  DELIVERED
+}
+
+model VehicleEntry {
+  id                      String             @id @default(cuid())
+  entryDate               DateTime           @default(now())
+  odometerReading         Int
+  fuelLevel               FuelLevel
+  exteriorConditionNotes  String?
+  hasSpareTire            Boolean            @default(false)
+  hasDocuments            Boolean            @default(false)
+  estimatedCompletionDate DateTime?
+  status                  VehicleEntryStatus @default(IN_PROGRESS)
+
+  vehicleId String
+  vehicle   Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
+
+  receivedByUserId String?
+  receivedBy       User?   @relation("EntryReceivedBy", fields: [receivedByUserId], references: [id], onDelete: SetNull)
+
+  photos        VehiclePhoto[]
+  damages       Damage[]
+  stages        RepairStage[]
+  history       RepairHistory[]
+  laborItems    LaborItem[]
+  parts         Part[]
+  otherCosts    OtherCost[]
+  invoice       Invoice?
+  notifications Notification[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([vehicleId])
+  @@index([status])
+  @@map("vehicle_entries")
+}
+
+enum PhotoCategory {
+  INTAKE
+  DAMAGE
+  PROGRESS
+  COMPLETION
+}
+
+model VehiclePhoto {
+  id         String        @id @default(cuid())
+  url        String
+  storageKey String
+  category   PhotoCategory
+  caption    String?
+  width      Int
+  height     Int
+  sizeBytes  Int
+
+  vehicleEntryId String
+  vehicleEntry   VehicleEntry @relation(fields: [vehicleEntryId], references: [id], onDelete: Cascade)
+
+  uploadedByUserId String?
+  uploadedBy       User?   @relation(fields: [uploadedByUserId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  @@index([vehicleEntryId])
+  @@map("vehicle_photos")
+}
+
+enum DamageSeverity {
+  MINOR
+  MODERATE
+  SEVERE
+}
+
+model Damage {
+  id          String         @id @default(cuid())
+  area        String
+  description String
+  severity    DamageSeverity
+
+  vehicleEntryId String
+  vehicleEntry   VehicleEntry @relation(fields: [vehicleEntryId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([vehicleEntryId])
+  @@map("damages")
+}
+
+// ---------------------------------------------------------------------------
+// Repair progress
+// ---------------------------------------------------------------------------
+
+enum RepairStageName {
+  DIAGNOSIS
+  DISASSEMBLY
+  BODYWORK
+  PAINTING
+  ASSEMBLY
+  QUALITY_CHECK
+  READY_FOR_DELIVERY
+}
+
+enum RepairStageStatus {
+  PENDING
+  IN_PROGRESS
+  DONE
+  SKIPPED
+}
+
+model RepairStage {
+  id     String            @id @default(cuid())
+  stage  RepairStageName
+  status RepairStageStatus @default(PENDING)
+  order  Int
+  notes  String?
+
+  startedAt   DateTime?
+  completedAt DateTime?
+
+  vehicleEntryId String
+  vehicleEntry   VehicleEntry @relation(fields: [vehicleEntryId], references: [id], onDelete: Cascade)
+
+  assignedMechanicId String?
+  assignedMechanic   User?   @relation(fields: [assignedMechanicId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([vehicleEntryId])
+  @@index([assignedMechanicId])
+  @@map("repair_stages")
+}
+
+enum RepairHistoryEventType {
+  STATUS_CHANGED
+  STAGE_CHANGED
+  NOTE_ADDED
+  DAMAGE_ADDED
+  PHOTO_ADDED
+  INVOICE_ISSUED
+}
+
+model RepairHistory {
+  id          String                 @id @default(cuid())
+  eventType   RepairHistoryEventType
+  description String
+
+  vehicleEntryId String
+  vehicleEntry   VehicleEntry @relation(fields: [vehicleEntryId], references: [id], onDelete: Cascade)
+
+  performedByUserId String?
+  performedBy       User?   @relation(fields: [performedByUserId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  @@index([vehicleEntryId, createdAt])
+  @@map("repair_history")
+}
+
+// ---------------------------------------------------------------------------
+// Estimate / cost lines
+// ---------------------------------------------------------------------------
+
+enum LaborItemStatus {
+  PENDING
+  APPROVED
+  COMPLETED
+}
+
+model LaborItem {
+  id          String          @id @default(cuid())
+  description String
+  hours       Decimal         @db.Decimal(10, 2)
+  hourlyRate  Decimal         @db.Decimal(10, 2)
+  total       Decimal         @db.Decimal(10, 2)
+  status      LaborItemStatus @default(PENDING)
+
+  vehicleEntryId String
+  vehicleEntry   VehicleEntry @relation(fields: [vehicleEntryId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([vehicleEntryId])
+  @@map("labor_items")
+}
+
+enum PartStatus {
+  PENDING_ORDER
+  ORDERED
+  RECEIVED
+  INSTALLED
+}
+
+model Part {
+  id         String     @id @default(cuid())
+  name       String
+  partNumber String?
+  supplier   String?
+  quantity   Int        @default(1)
+  unitCost   Decimal    @db.Decimal(10, 2)
+  unitPrice  Decimal    @db.Decimal(10, 2)
+  total      Decimal    @db.Decimal(10, 2)
+  status     PartStatus @default(PENDING_ORDER)
+
+  vehicleEntryId String
+  vehicleEntry   VehicleEntry @relation(fields: [vehicleEntryId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([vehicleEntryId])
+  @@map("parts")
+}
+
+model OtherCost {
+  id          String  @id @default(cuid())
+  description String
+  amount      Decimal @db.Decimal(10, 2)
+  category    String?
+
+  vehicleEntryId String
+  vehicleEntry   VehicleEntry @relation(fields: [vehicleEntryId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([vehicleEntryId])
+  @@map("other_costs")
+}
+
+// ---------------------------------------------------------------------------
+// Invoicing / payments
+// ---------------------------------------------------------------------------
+
+enum InvoiceStatus {
+  DRAFT
+  ISSUED
+  PAID
+  PARTIALLY_PAID
+  OVERDUE
+  CANCELLED
+}
+
+model Invoice {
+  id            String        @id @default(cuid())
+  invoiceNumber String        @unique
+  issueDate     DateTime      @default(now())
+  dueDate       DateTime?
+  subtotal      Decimal       @db.Decimal(10, 2)
+  taxRate       Decimal       @default(22.00) @db.Decimal(5, 2)
+  taxAmount     Decimal       @db.Decimal(10, 2)
+  totalAmount   Decimal       @db.Decimal(10, 2)
+  status        InvoiceStatus @default(DRAFT)
+  notes         String?
+
+  vehicleEntryId String       @unique
+  vehicleEntry   VehicleEntry @relation(fields: [vehicleEntryId], references: [id], onDelete: Restrict)
+
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Restrict)
+
+  items    InvoiceItem[]
+  payments Payment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([clientId])
+  @@index([status])
+  @@map("invoices")
+}
+
+model InvoiceItem {
+  id          String  @id @default(cuid())
+  description String
+  quantity    Decimal @db.Decimal(10, 2)
+  unitPrice   Decimal @db.Decimal(10, 2)
+  total       Decimal @db.Decimal(10, 2)
+
+  invoiceId String
+  invoice   Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([invoiceId])
+  @@map("invoice_items")
+}
+
+enum PaymentMethod {
+  CASH
+  CARD
+  BANK_TRANSFER
+  OTHER
+}
+
+model Payment {
+  id        String        @id @default(cuid())
+  amount    Decimal       @db.Decimal(10, 2)
+  method    PaymentMethod
+  paidAt    DateTime      @default(now())
+  reference String?
+
+  invoiceId String
+  invoice   Invoice @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+
+  recordedByUserId String?
+  recordedBy       User?   @relation(fields: [recordedByUserId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  @@index([invoiceId])
+  @@map("payments")
+}
+
+// ---------------------------------------------------------------------------
+// Notifications / audit
+// ---------------------------------------------------------------------------
+
+enum NotificationType {
+  REPAIR_STAGE_UPDATE
+  INVOICE_ISSUED
+  PAYMENT_RECEIVED
+  VEHICLE_READY
+  GENERIC
+}
+
+enum NotificationChannel {
+  IN_APP
+  EMAIL
+  SMS
+}
+
+model Notification {
+  id      String              @id @default(cuid())
+  type    NotificationType
+  channel NotificationChannel
+  title   String
+  message String
+  isRead  Boolean             @default(false)
+
+  recipientUserId String?
+  recipientUser   User?   @relation(fields: [recipientUserId], references: [id], onDelete: Cascade)
+
+  recipientClientId String?
+  recipientClient   Client? @relation(fields: [recipientClientId], references: [id], onDelete: Cascade)
+
+  relatedVehicleEntryId String?
+  relatedVehicleEntry   VehicleEntry? @relation(fields: [relatedVehicleEntryId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  @@index([recipientUserId, isRead])
+  @@index([recipientClientId, isRead])
+  @@map("notifications")
+}
+
+model ActivityLog {
+  id         String  @id @default(cuid())
+  action     String
+  entityType String
+  entityId   String
+  metadata   Json?
+  ipAddress  String?
+  userAgent  String?
+
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([userId, createdAt])
+  @@map("activity_logs")
+}
