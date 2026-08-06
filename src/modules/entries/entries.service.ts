@@ -5,6 +5,7 @@ import { vehiclesRepository } from '../vehicles/vehicles.repository';
 import { laborRepository } from '../labor/labor.repository';
 import { partsRepository } from '../parts/parts.repository';
 import { costsRepository } from '../costs/costs.repository';
+import { repairsService } from '../repairs/repairs.service';
 import { entriesRepository } from './entries.repository';
 import type {
   ChangeEntryStatusInput,
@@ -83,6 +84,8 @@ export const entriesService = {
       description: 'Vehicle received. Status set to IN_PROGRESS.',
       performedByUserId: receivedByUserId,
     });
+
+    await repairsService.createDefaultStages(entry.id);
 
     return entry;
   },
