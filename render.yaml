@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: nakamacar-backend
+    runtime: node
+    plan: starter
+    region: frankfurt
+    buildCommand: pnpm install --frozen-lockfile && pnpm prisma:generate && pnpm build
+    startCommand: pnpm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: "24"
+      - key: PORT
+        value: "4000"
+      - key: CORS_ORIGIN
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: DIRECT_URL
+        sync: false
