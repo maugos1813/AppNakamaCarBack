@@ -1,0 +1,30 @@
+import rateLimit from 'express-rate-limit';
+import type { Request, Response } from 'express';
+
+function tooManyRequestsHandler(_req: Request, res: Response) {
+  res.status(429).json({
+    success: false,
+    message: 'Too many requests. Please try again later.',
+    errors: [],
+  });
+}
+
+// Generous global ceiling — this protects against abuse/scraping, not
+// legitimate internal usage by a handful of staff members.
+export const globalRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 300,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: tooManyRequestsHandler,
+});
+
+// Much stricter — login is the only unauthenticated endpoint in the API,
+// making it the sole target for password brute-forcing.
+export const loginRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: tooManyRequestsHandler,
+});

@@ -4,6 +4,7 @@ import { ZodError } from 'zod';
 import { MulterError } from 'multer';
 import { ApiError, type ApiErrorDetail } from '../utils/ApiError';
 import { isProduction } from '../config/env';
+import { logger } from '../lib/logger';
 
 interface ErrorResponseShape {
   statusCode: number;
@@ -52,6 +53,12 @@ function resolveError(err: unknown): ErrorResponseShape {
     }
   }
 
+  // express.json()/express.urlencoded() reject malformed request bodies with
+  // a SyntaxError that carries `status: 400` — a client mistake, not a server one.
+  if (err instanceof SyntaxError && 'status' in err && err.status === 400) {
+    return { statusCode: 400, message: 'Malformed request body.', errors: [] };
+  }
+
   if (err instanceof Error) {
     return { statusCode: 500, message: isProduction ? 'Internal server error.' : err.message, errors: [] };
   }
@@ -63,7 +70,7 @@ export function errorHandler(err: unknown, req: Request, res: Response, _next: N
   const { statusCode, message, errors } = resolveError(err);
 
   if (statusCode >= 500) {
-    console.error(`[${req.method} ${req.originalUrl}]`, err);
+    (req.log ?? logger).error({ err }, `Unhandled error on ${req.method} ${req.originalUrl}`);
   }
 
   res.status(statusCode).json({

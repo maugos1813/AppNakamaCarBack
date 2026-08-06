@@ -1,5 +1,4 @@
 import { roundCurrency } from '../../utils/money';
-import { invoicesRepository } from '../invoices/invoices.repository';
 import { financeRepository } from './finance.repository';
 import type { FinanceSummaryQuery } from './finance.validation';
 
@@ -61,15 +60,17 @@ export const financeService = {
 
   async getOverdueInvoices() {
     const invoices = await financeRepository.overdueInvoices();
-    return Promise.all(
-      invoices.map(async (invoice) => {
-        const amountPaid = roundCurrency(await invoicesRepository.sumPayments(invoice.id));
-        return {
-          ...invoice,
-          amountPaid,
-          amountDue: roundCurrency(Number(invoice.totalAmount) - amountPaid),
-        };
-      }),
+    const paidByInvoiceId = await financeRepository.sumPaymentsByInvoiceIds(
+      invoices.map((invoice) => invoice.id),
     );
+
+    return invoices.map((invoice) => {
+      const amountPaid = roundCurrency(paidByInvoiceId.get(invoice.id) ?? 0);
+      return {
+        ...invoice,
+        amountPaid,
+        amountDue: roundCurrency(Number(invoice.totalAmount) - amountPaid),
+      };
+    });
   },
 };

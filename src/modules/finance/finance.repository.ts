@@ -85,4 +85,17 @@ export const financeRepository = {
       orderBy: { dueDate: 'asc' },
     });
   },
+
+  /** One grouped query instead of one payment lookup per invoice. */
+  async sumPaymentsByInvoiceIds(invoiceIds: string[]): Promise<Map<string, number>> {
+    if (invoiceIds.length === 0) {
+      return new Map();
+    }
+    const rows = await prisma.payment.groupBy({
+      by: ['invoiceId'],
+      where: { invoiceId: { in: invoiceIds } },
+      _sum: { amount: true },
+    });
+    return new Map(rows.map((row) => [row.invoiceId, Number(row._sum.amount ?? 0)]));
+  },
 };

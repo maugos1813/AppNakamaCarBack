@@ -405,6 +405,7 @@ model Invoice {
 
   @@index([clientId])
   @@index([status])
+  @@index([issueDate])
   @@map("invoices")
 }
 
@@ -447,6 +448,7 @@ model Payment {
   createdAt DateTime @default(now())
 
   @@index([invoiceId])
+  @@index([paidAt])
   @@map("payments")
 }
 
