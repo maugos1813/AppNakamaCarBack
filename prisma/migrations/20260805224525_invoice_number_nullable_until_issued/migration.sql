@@ -1,0 +1,4 @@
+-- AlterTable
+ALTER TABLE "invoices" ALTER COLUMN "invoiceNumber" DROP NOT NULL,
+ALTER COLUMN "issueDate" DROP NOT NULL,
+ALTER COLUMN "issueDate" DROP DEFAULT;

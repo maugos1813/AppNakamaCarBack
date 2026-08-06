@@ -378,8 +378,11 @@ enum InvoiceStatus {
 
 model Invoice {
   id            String        @id @default(cuid())
-  invoiceNumber String        @unique
-  issueDate     DateTime      @default(now())
+  // Both null while the invoice is DRAFT — assigned atomically when issued
+  // (see PATCH /invoices/:id/issue) so a cancelled draft never burns a
+  // legally-sequential number.
+  invoiceNumber String?       @unique
+  issueDate     DateTime?
   dueDate       DateTime?
   subtotal      Decimal       @db.Decimal(10, 2)
   taxRate       Decimal       @default(22.00) @db.Decimal(5, 2)
