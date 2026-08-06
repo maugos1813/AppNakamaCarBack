@@ -11,6 +11,8 @@ import { entryPartsRouter, partsRouter } from '../modules/parts/parts.routes';
 import { entryCostsRouter, costsRouter } from '../modules/costs/costs.routes';
 import { entryStagesRouter, stagesRouter } from '../modules/repairs/repairs.routes';
 import { entryInvoiceRouter, invoicesRouter } from '../modules/invoices/invoices.routes';
+import { dashboardRouter } from '../modules/dashboard/dashboard.routes';
+import { financeRouter } from '../modules/finance/finance.routes';
 
 // Central mount point for every feature module's router.
 export const apiRouter = Router();
@@ -36,3 +38,5 @@ apiRouter.use('/parts', partsRouter);
 apiRouter.use('/costs', costsRouter);
 apiRouter.use('/stages', stagesRouter);
 apiRouter.use('/invoices', invoicesRouter);
+apiRouter.use('/dashboard', dashboardRouter);
+apiRouter.use('/finance', financeRouter);
