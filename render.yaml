@@ -14,9 +14,29 @@ services:
         value: "24"
       - key: PORT
         value: "4000"
+      - key: BCRYPT_SALT_ROUNDS
+        value: "12"
+      - key: JWT_EXPIRES_IN
+        value: 12h
       - key: CORS_ORIGIN
         sync: false
       - key: DATABASE_URL
         sync: false
       - key: DIRECT_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: R2_ACCOUNT_ID
+        sync: false
+      - key: R2_ACCESS_KEY_ID
+        sync: false
+      - key: R2_SECRET_ACCESS_KEY
+        sync: false
+      - key: R2_BUCKET_NAME
+        sync: false
+      - key: R2_PUBLIC_URL
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: EMAIL_FROM
         sync: false
