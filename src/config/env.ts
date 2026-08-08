@@ -28,6 +28,21 @@ const envSchema = z.object({
   // Resend (transactional email) for client notifications.
   RESEND_API_KEY: z.string().min(1),
   EMAIL_FROM: z.string().min(1),
+
+  // Base URL of the (not-yet-built) client-facing frontend, used to build the
+  // tracking/approval links embedded in notification emails, e.g.
+  // `${FRONTEND_URL}/track/<token>`.
+  FRONTEND_URL: z.string().url().default('http://localhost:5173'),
+
+  // Issuer details printed on invoice PDFs. Placeholders by default —
+  // update these (Render env vars, no code change needed) with the real
+  // business registration details before issuing real invoices.
+  COMPANY_NAME: z.string().default('NakamaCar Carrozzeria Srl'),
+  COMPANY_VAT_NUMBER: z.string().default('00000000000'),
+  COMPANY_ADDRESS: z.string().default('Via Example 1'),
+  COMPANY_CITY: z.string().default('Milano'),
+  COMPANY_POSTAL_CODE: z.string().default('20100'),
+  COMPANY_PROVINCE: z.string().default('MI'),
 });
 
 function loadEnv() {

@@ -14,6 +14,7 @@ import { entryInvoiceRouter, invoicesRouter } from '../modules/invoices/invoices
 import { dashboardRouter } from '../modules/dashboard/dashboard.routes';
 import { financeRouter } from '../modules/finance/finance.routes';
 import { entryNotificationsRouter } from '../modules/notifications/notifications.routes';
+import { clientPortalRouter } from '../modules/clientPortal/clientPortal.routes';
 
 // Central mount point for every feature module's router.
 export const apiRouter = Router();
@@ -42,3 +43,4 @@ apiRouter.use('/stages', stagesRouter);
 apiRouter.use('/invoices', invoicesRouter);
 apiRouter.use('/dashboard', dashboardRouter);
 apiRouter.use('/finance', financeRouter);
+apiRouter.use('/client/:token', clientPortalRouter);

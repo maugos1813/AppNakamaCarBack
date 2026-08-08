@@ -129,4 +129,31 @@ export const entriesService = {
 
     return updated;
   },
+
+  async requestEstimateApproval(id: string) {
+    const entry = await entriesRepository.findById(id);
+    if (!entry) {
+      throw ApiError.notFound('Vehicle entry not found.');
+    }
+    if (entry.estimateStatus !== 'DRAFT') {
+      throw ApiError.badRequest(`Cannot request approval from estimate status ${entry.estimateStatus}.`);
+    }
+
+    const estimate = await entriesService.getEstimate(id);
+    if (estimate.grandTotal <= 0) {
+      throw ApiError.badRequest('Cannot request approval for an estimate with no billable items.');
+    }
+
+    const updated = await entriesRepository.update(id, { estimateStatus: 'PENDING_APPROVAL' });
+
+    await entriesRepository.createHistoryEvent({
+      vehicleEntryId: id,
+      eventType: 'NOTE_ADDED',
+      description: `Estimate sent to client for approval (total €${estimate.grandTotal}).`,
+    });
+
+    await notificationsService.notifyEstimatePendingApproval(id, estimate.grandTotal);
+
+    return updated;
+  },
 };

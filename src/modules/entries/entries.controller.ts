@@ -47,4 +47,9 @@ export const entriesController = {
     const entry = await entriesService.changeStatus(req.params.id as string, input, req.user!.id);
     sendSuccess(res, { message: 'Vehicle entry status updated successfully.', data: entry });
   },
+
+  async requestEstimateApproval(req: Request, res: Response) {
+    const entry = await entriesService.requestEstimateApproval(req.params.id as string);
+    sendSuccess(res, { message: 'Estimate approval requested successfully.', data: entry });
+  },
 };

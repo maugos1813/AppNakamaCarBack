@@ -13,3 +13,4 @@ entriesRouter.patch('/:id', entriesController.update);
 entriesRouter.get('/:id/history', entriesController.getHistory);
 entriesRouter.get('/:id/estimate', entriesController.getEstimate);
 entriesRouter.patch('/:id/status', entriesController.changeStatus);
+entriesRouter.patch('/:id/estimate/request-approval', entriesController.requestEstimateApproval);

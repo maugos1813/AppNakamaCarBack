@@ -49,6 +49,18 @@ export const repairsService = {
         throw ApiError.badRequest(`Cannot change stage status from ${existing.status} to ${input.status}.`);
       }
 
+      // Diagnosis is exempt — you need to inspect the car before you can even
+      // build an estimate. Every stage after that is real repair work, which
+      // must wait for the client's sign-off on cost.
+      if (input.status === 'IN_PROGRESS' && existing.stage !== 'DIAGNOSIS') {
+        const entry = await entriesRepository.findById(existing.vehicleEntryId);
+        if (entry?.estimateStatus !== 'APPROVED') {
+          throw ApiError.badRequest(
+            'Cannot start this stage until the client approves the repair estimate.',
+          );
+        }
+      }
+
       data.status = input.status;
       if (input.status === 'IN_PROGRESS' && !existing.startedAt) {
         data.startedAt = new Date();

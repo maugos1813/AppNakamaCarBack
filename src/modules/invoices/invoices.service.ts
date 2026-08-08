@@ -1,5 +1,6 @@
 import { ApiError } from '../../utils/ApiError';
 import { roundCurrency } from '../../utils/money';
+import { generateInvoicePdf } from '../../lib/pdf/invoicePdf';
 import { entriesRepository } from '../entries/entries.repository';
 import { entriesService } from '../entries/entries.service';
 import { notificationsService } from '../notifications/notifications.service';
@@ -29,6 +30,19 @@ export const invoicesService = {
     }
     const summary = await withPaymentSummary(id, Number(invoice.totalAmount));
     return { ...invoice, ...summary };
+  },
+
+  async getInvoicePdf(id: string): Promise<{ buffer: Buffer; invoiceNumber: string }> {
+    const invoice = await invoicesRepository.findById(id);
+    if (!invoice) {
+      throw ApiError.notFound('Invoice not found.');
+    }
+    if (invoice.status === 'DRAFT') {
+      throw ApiError.badRequest('Cannot generate a PDF for a DRAFT invoice — issue it first.');
+    }
+
+    const buffer = await generateInvoicePdf(invoice);
+    return { buffer, invoiceNumber: invoice.invoiceNumber! };
   },
 
   async createInvoiceForEntry(vehicleEntryId: string, input: CreateInvoiceInput) {

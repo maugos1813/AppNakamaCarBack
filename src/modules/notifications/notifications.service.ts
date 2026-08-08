@@ -1,6 +1,7 @@
 import type { NotificationType, VehicleEntryStatus } from '@prisma/client';
 import { sendEmail } from '../../lib/email';
 import { logger } from '../../lib/logger';
+import { buildClientTrackingUrl } from '../../lib/clientAccessToken';
 import { entriesRepository } from '../entries/entries.repository';
 import { ApiError } from '../../utils/ApiError';
 import { notificationsRepository } from './notifications.repository';
@@ -11,11 +12,16 @@ interface Recipient {
   fullName: string;
 }
 
-function buildEmailHtml(title: string, message: string): string {
+function buildEmailHtml(title: string, message: string, link?: { url: string; label: string }): string {
+  const button = link
+    ? `<p style="margin-top: 24px;"><a href="${link.url}" style="background: #1a1a1a; color: #fff; padding: 10px 20px; border-radius: 6px; text-decoration: none;">${link.label}</a></p>`
+    : '';
+
   return `
     <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
       <h2 style="color: #1a1a1a;">${title}</h2>
       <p style="color: #444; line-height: 1.5;">${message}</p>
+      ${button}
       <p style="color: #999; font-size: 12px; margin-top: 32px;">NakamaCar Carrozzeria</p>
     </div>
   `;
@@ -33,6 +39,7 @@ async function notifyClient(params: {
   type: NotificationType;
   title: string;
   message: string;
+  link?: { url: string; label: string };
 }): Promise<void> {
   if (!params.recipient.email) {
     await notificationsRepository.create({
@@ -62,7 +69,7 @@ async function notifyClient(params: {
     const providerMessageId = await sendEmail(
       params.recipient.email,
       params.title,
-      buildEmailHtml(params.title, params.message),
+      buildEmailHtml(params.title, params.message, params.link),
     );
     await notificationsRepository.markSent(notification.id, providerMessageId);
   } catch (err) {
@@ -107,6 +114,7 @@ export const notificationsService = {
       type: newStatus === 'COMPLETED' ? 'VEHICLE_READY' : 'GENERIC',
       title: template.title,
       message: template.message(entry.vehicle.licensePlate),
+      link: { url: buildClientTrackingUrl(vehicleEntryId, entry.vehicle.client.id), label: 'Segui la riparazione' },
     });
   },
 
@@ -122,6 +130,22 @@ export const notificationsService = {
       type: 'INVOICE_ISSUED',
       title: 'Fattura emessa',
       message: `È stata emessa la fattura n. ${params.invoiceNumber} per un totale di €${params.totalAmount}. Contattaci per le modalità di pagamento.`,
+      link: { url: buildClientTrackingUrl(params.vehicleEntryId, params.client.id), label: 'Vedi i dettagli' },
+    });
+  },
+
+  async notifyEstimatePendingApproval(vehicleEntryId: string, estimateTotal: number): Promise<void> {
+    const entry = await entriesRepository.findById(vehicleEntryId);
+    if (!entry) return;
+
+    const client = entry.vehicle.client;
+    await notifyClient({
+      recipient: { id: client.id, email: client.email, fullName: client.fullName },
+      vehicleEntryId,
+      type: 'ESTIMATE_PENDING_APPROVAL',
+      title: 'Preventivo pronto per approvazione',
+      message: `Il preventivo per il veicolo targa ${entry.vehicle.licensePlate} è pronto: totale stimato €${estimateTotal}. Prima di iniziare la riparazione abbiamo bisogno della tua conferma.`,
+      link: { url: buildClientTrackingUrl(vehicleEntryId, client.id), label: 'Vedi e approva il preventivo' },
     });
   },
 

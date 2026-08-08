@@ -14,6 +14,7 @@ export const invoicesRouter = Router();
 invoicesRouter.use(authenticate);
 invoicesRouter.get('/', invoicesController.list);
 invoicesRouter.get('/:id', invoicesController.getById);
+invoicesRouter.get('/:id/pdf', invoicesController.downloadPdf);
 invoicesRouter.patch('/:id/issue', authorize('ADMIN'), invoicesController.issue);
 invoicesRouter.patch('/:id/cancel', authorize('ADMIN'), invoicesController.cancel);
 invoicesRouter.post('/:id/payments', authorize('ADMIN'), invoicesController.recordPayment);

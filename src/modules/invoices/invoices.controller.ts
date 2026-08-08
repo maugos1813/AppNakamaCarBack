@@ -36,4 +36,11 @@ export const invoicesController = {
     const payment = await invoicesService.recordPayment(req.params.id as string, input, req.user!.id);
     sendSuccess(res, { statusCode: 201, message: 'Payment recorded successfully.', data: payment });
   },
+
+  async downloadPdf(req: Request, res: Response) {
+    const { buffer, invoiceNumber } = await invoicesService.getInvoicePdf(req.params.id as string);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="fattura-${invoiceNumber.replace('/', '-')}.pdf"`);
+    res.send(buffer);
+  },
 };

@@ -134,6 +134,13 @@ enum VehicleEntryStatus {
   DELIVERED
 }
 
+enum EstimateStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
+}
+
 model VehicleEntry {
   id                      String             @id @default(cuid())
   entryDate               DateTime           @default(now())
@@ -144,6 +151,11 @@ model VehicleEntry {
   hasDocuments            Boolean            @default(false)
   estimatedCompletionDate DateTime?
   status                  VehicleEntryStatus @default(IN_PROGRESS)
+
+  // Client sign-off on the labor/parts/other-costs estimate — gates whether
+  // repair stages beyond DIAGNOSIS are allowed to start (see repairs.service).
+  estimateStatus      EstimateStatus @default(DRAFT)
+  estimateRespondedAt DateTime?
 
   vehicleId String
   vehicle   Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
@@ -272,6 +284,8 @@ enum RepairHistoryEventType {
   DAMAGE_ADDED
   PHOTO_ADDED
   INVOICE_ISSUED
+  ESTIMATE_APPROVED
+  ESTIMATE_REJECTED
 }
 
 model RepairHistory {
@@ -461,6 +475,7 @@ enum NotificationType {
   INVOICE_ISSUED
   PAYMENT_RECEIVED
   VEHICLE_READY
+  ESTIMATE_PENDING_APPROVAL
   GENERIC
 }
 
