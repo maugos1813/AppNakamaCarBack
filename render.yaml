@@ -2,7 +2,7 @@ services:
   - type: web
     name: nakamacar-backend
     runtime: node
-    plan: starter
+    plan: free
     region: frankfurt
     buildCommand: pnpm install --frozen-lockfile && pnpm prisma:generate && pnpm build
     startCommand: pnpm start
