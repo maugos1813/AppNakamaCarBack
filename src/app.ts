@@ -13,6 +13,10 @@ import { globalRateLimiter } from './middlewares/rateLimit';
 import { generateOpenApiDocument } from './lib/openapi/document';
 
 const allowedOrigins = env.CORS_ORIGIN.split(',').map((origin) => origin.trim());
+// The `cors` package matches array entries against the browser's literal
+// Origin header — "*" inside an array is just the four-character string "*"
+// and never matches a real origin, so a true wildcard needs the bare string.
+const corsOrigin = allowedOrigins.length === 1 && allowedOrigins[0] === '*' ? '*' : allowedOrigins;
 
 export function createApp(): Application {
   const app = express();
@@ -22,8 +26,14 @@ export function createApp(): Application {
   app.use(helmet());
   app.use(
     cors({
-      origin: allowedOrigins,
-      credentials: true,
+      origin: corsOrigin,
+      // We authenticate with a Bearer JWT sent explicitly by the frontend
+      // (never an ambient browser credential like a cookie), so CORS
+      // "credentials" mode isn't needed — and it couldn't coexist with a
+      // wildcard origin anyway: browsers hard-reject Access-Control-Allow-Origin: *
+      // together with Access-Control-Allow-Credentials: true, no matter what
+      // the server sends.
+      credentials: false,
     }),
   );
   app.use(compression());
