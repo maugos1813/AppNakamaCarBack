@@ -13,6 +13,7 @@ import { entryStagesRouter, stagesRouter } from '../modules/repairs/repairs.rout
 import { entryInvoiceRouter, invoicesRouter } from '../modules/invoices/invoices.routes';
 import { dashboardRouter } from '../modules/dashboard/dashboard.routes';
 import { financeRouter } from '../modules/finance/finance.routes';
+import { entryNotificationsRouter } from '../modules/notifications/notifications.routes';
 
 // Central mount point for every feature module's router.
 export const apiRouter = Router();
@@ -30,6 +31,7 @@ apiRouter.use('/entries/:entryId/parts', entryPartsRouter);
 apiRouter.use('/entries/:entryId/costs', entryCostsRouter);
 apiRouter.use('/entries/:entryId/stages', entryStagesRouter);
 apiRouter.use('/entries/:entryId/invoice', entryInvoiceRouter);
+apiRouter.use('/entries/:entryId/notifications', entryNotificationsRouter);
 apiRouter.use('/entries', entriesRouter);
 apiRouter.use('/photos', photosRouter);
 apiRouter.use('/damages', damagesRouter);

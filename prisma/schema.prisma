@@ -470,6 +470,12 @@ enum NotificationChannel {
   SMS
 }
 
+enum NotificationDeliveryStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
 model Notification {
   id      String              @id @default(cuid())
   type    NotificationType
@@ -477,6 +483,13 @@ model Notification {
   title   String
   message String
   isRead  Boolean             @default(false)
+
+  // Delivery tracking for the actual send attempt (email/SMS provider call),
+  // separate from isRead (which is only meaningful for IN_APP notifications).
+  status            NotificationDeliveryStatus @default(PENDING)
+  providerMessageId String?
+  sentAt            DateTime?
+  errorMessage      String?
 
   recipientUserId String?
   recipientUser   User?   @relation(fields: [recipientUserId], references: [id], onDelete: Cascade)
@@ -491,6 +504,7 @@ model Notification {
 
   @@index([recipientUserId, isRead])
   @@index([recipientClientId, isRead])
+  @@index([relatedVehicleEntryId])
   @@map("notifications")
 }
 

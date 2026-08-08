@@ -2,6 +2,7 @@ import { ApiError } from '../../utils/ApiError';
 import { roundCurrency } from '../../utils/money';
 import { entriesRepository } from '../entries/entries.repository';
 import { entriesService } from '../entries/entries.service';
+import { notificationsService } from '../notifications/notifications.service';
 import { invoicesRepository } from './invoices.repository';
 import type { CreateInvoiceInput, CreatePaymentInput, ListInvoicesQuery } from './invoices.validation';
 
@@ -128,6 +129,13 @@ export const invoicesService = {
       vehicleEntryId: invoice.vehicleEntryId,
       eventType: 'INVOICE_ISSUED',
       description: `Invoice ${issued.invoiceNumber} issued for €${issued.totalAmount}.`,
+    });
+
+    await notificationsService.notifyInvoiceIssued({
+      vehicleEntryId: invoice.vehicleEntryId,
+      invoiceNumber: issued.invoiceNumber!,
+      totalAmount: issued.totalAmount.toString(),
+      client: { id: invoice.client.id, email: invoice.client.email, fullName: invoice.client.fullName },
     });
 
     return issued;

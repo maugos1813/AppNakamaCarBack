@@ -24,6 +24,10 @@ const envSchema = z.object({
   R2_SECRET_ACCESS_KEY: z.string().min(1),
   R2_BUCKET_NAME: z.string().min(1),
   R2_PUBLIC_URL: z.string().url(),
+
+  // Resend (transactional email) for client notifications.
+  RESEND_API_KEY: z.string().min(1),
+  EMAIL_FROM: z.string().min(1),
 });
 
 function loadEnv() {

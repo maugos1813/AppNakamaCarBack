@@ -6,6 +6,7 @@ import { laborRepository } from '../labor/labor.repository';
 import { partsRepository } from '../parts/parts.repository';
 import { costsRepository } from '../costs/costs.repository';
 import { repairsService } from '../repairs/repairs.service';
+import { notificationsService } from '../notifications/notifications.service';
 import { entriesRepository } from './entries.repository';
 import type {
   ChangeEntryStatusInput,
@@ -123,6 +124,8 @@ export const entriesService = {
       description: `Status changed from ${existing.status} to ${input.status}.${input.notes ? ` ${input.notes}` : ''}`,
       performedByUserId,
     });
+
+    await notificationsService.notifyEntryStatusChange(id, input.status);
 
     return updated;
   },
