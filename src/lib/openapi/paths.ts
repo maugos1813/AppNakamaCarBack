@@ -114,7 +114,7 @@ reg({ method: 'delete', path: '/api/v1/vehicles/{id}', tags: ['Vehicles'], summa
 // ---------------------------------------------------------------------------
 // Vehicle entries (the repair job)
 // ---------------------------------------------------------------------------
-reg({ method: 'get', path: '/api/v1/entries', tags: ['Entries'], summary: 'List vehicle entries, ?vehicleId=&clientId=&status=', query: listEntriesQuerySchema });
+reg({ method: 'get', path: '/api/v1/entries', tags: ['Entries'], summary: 'List vehicle entries (each includes its 7 repair stages), ?vehicleId=&clientId=&status=', query: listEntriesQuerySchema });
 reg({ method: 'post', path: '/api/v1/entries', tags: ['Entries'], summary: 'Register vehicle intake. Auto-seeds the 7 repair stages.', body: createEntrySchema, successStatus: 201 });
 reg({ method: 'get', path: '/api/v1/entries/{id}', tags: ['Entries'], summary: 'Get an entry by id, with vehicle/client/receivedBy.', params: idParam });
 reg({ method: 'patch', path: '/api/v1/entries/{id}', tags: ['Entries'], summary: 'Update intake details (mileage, fuel level, notes...).', params: idParam, body: updateEntrySchema });

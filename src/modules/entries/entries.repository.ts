@@ -4,6 +4,14 @@ import { prisma } from '../../lib/prisma';
 const entryInclude = {
   vehicle: { include: { client: true } },
   receivedBy: { select: { id: true, fullName: true, email: true } },
+  // Included on both the single-entry and list responses so a Kanban-style
+  // view can place each entry in the right column — and highlight "my
+  // assigned stages" — from the list call alone, with no per-entry N+1
+  // follow-up request to GET /entries/:id/stages.
+  stages: {
+    orderBy: { order: 'asc' },
+    include: { assignedMechanic: { select: { id: true, fullName: true, email: true } } },
+  },
 } satisfies Prisma.VehicleEntryInclude;
 
 export type EntryWithRelations = Prisma.VehicleEntryGetPayload<{ include: typeof entryInclude }>;
