@@ -154,8 +154,9 @@ model VehicleEntry {
 
   // Client sign-off on the labor/parts/other-costs estimate — gates whether
   // repair stages beyond DIAGNOSIS are allowed to start (see repairs.service).
-  estimateStatus      EstimateStatus @default(DRAFT)
-  estimateRespondedAt DateTime?
+  estimateStatus        EstimateStatus @default(DRAFT)
+  estimateRespondedAt   DateTime?
+  estimateRejectionReason String?
 
   vehicleId String
   vehicle   Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Restrict)

@@ -34,6 +34,8 @@ export const clientPortalService = {
       },
       status: entry.status,
       estimateStatus: entry.estimateStatus,
+      estimateRespondedAt: entry.estimateRespondedAt,
+      estimateRejectionReason: entry.estimateRejectionReason,
       entryDate: entry.entryDate,
       estimatedCompletionDate: entry.estimatedCompletionDate,
       stages: stages.map((s) => ({ stage: s.stage, status: s.status, order: s.order })),
@@ -52,6 +54,7 @@ export const clientPortalService = {
     const updated = await entriesRepository.update(entryId, {
       estimateStatus: 'APPROVED',
       estimateRespondedAt: new Date(),
+      estimateRejectionReason: null,
     });
 
     await entriesRepository.createHistoryEvent({
@@ -72,6 +75,7 @@ export const clientPortalService = {
     const updated = await entriesRepository.update(entryId, {
       estimateStatus: 'REJECTED',
       estimateRespondedAt: new Date(),
+      estimateRejectionReason: input.reason ?? null,
     });
 
     await entriesRepository.createHistoryEvent({
