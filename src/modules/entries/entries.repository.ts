@@ -12,6 +12,9 @@ const entryInclude = {
     orderBy: { order: 'asc' },
     include: { assignedMechanic: { select: { id: true, fullName: true, email: true } } },
   },
+  // So the entry detail screen knows whether to offer "Create invoice" or
+  // "View invoice" without a separate lookup.
+  invoice: { select: { id: true, invoiceNumber: true, status: true } },
 } satisfies Prisma.VehicleEntryInclude;
 
 export type EntryWithRelations = Prisma.VehicleEntryGetPayload<{ include: typeof entryInclude }>;
