@@ -1,5 +1,6 @@
 import rateLimit from 'express-rate-limit';
 import type { Request, Response } from 'express';
+import { isTest } from '../config/env';
 
 function tooManyRequestsHandler(_req: Request, res: Response) {
   res.status(429).json({
@@ -9,6 +10,11 @@ function tooManyRequestsHandler(_req: Request, res: Response) {
   });
 }
 
+// Real client traffic never runs with NODE_ENV=test (Render always sets
+// production), so skipping enforcement there only affects the automated
+// test suite — which logs in far more than 5 times per run by design.
+const skip = () => isTest;
+
 // Generous global ceiling — this protects against abuse/scraping, not
 // legitimate internal usage by a handful of staff members.
 export const globalRateLimiter = rateLimit({
@@ -16,6 +22,7 @@ export const globalRateLimiter = rateLimit({
   limit: 300,
   standardHeaders: true,
   legacyHeaders: false,
+  skip,
   handler: tooManyRequestsHandler,
 });
 
@@ -26,5 +33,6 @@ export const loginRateLimiter = rateLimit({
   limit: 5,
   standardHeaders: true,
   legacyHeaders: false,
+  skip,
   handler: tooManyRequestsHandler,
 });

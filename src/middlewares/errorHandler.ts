@@ -53,6 +53,16 @@ function resolveError(err: unknown): ErrorResponseShape {
     }
   }
 
+  // Postgres RESTRICT-on-delete violations (SQLSTATE 23001) surface as this
+  // *Unknown* error class, not PrismaClientKnownRequestError/P2003 — Prisma
+  // only assigns a P-code to a subset of constraint violations. Every
+  // Restrict FK in our schema exists specifically so this case is reachable
+  // (e.g. deleting a Client that still has Vehicles), so it needs the same
+  // clean 409 instead of leaking a raw 500 with Postgres internals.
+  if (err instanceof Prisma.PrismaClientUnknownRequestError && /restrict|foreign key/i.test(err.message)) {
+    return { statusCode: 409, message: 'This operation violates a related record constraint.', errors: [] };
+  }
+
   // express.json()/express.urlencoded() reject malformed request bodies with
   // a SyntaxError that carries `status: 400` — a client mistake, not a server one.
   if (err instanceof SyntaxError && 'status' in err && err.status === 400) {

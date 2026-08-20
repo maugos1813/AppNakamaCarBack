@@ -4,7 +4,7 @@ import helmet from 'helmet';
 import compression from 'compression';
 import pinoHttp from 'pino-http';
 import swaggerUi from 'swagger-ui-express';
-import { env } from './config/env';
+import { env, isTest } from './config/env';
 import { logger } from './lib/logger';
 import { apiRouter } from './routes';
 import { notFoundHandler } from './middlewares/notFoundHandler';
@@ -40,7 +40,10 @@ export function createApp(): Application {
   // Logging goes before body parsing so req.log exists even for requests
   // that fail during parsing (e.g. malformed JSON) and reach errorHandler
   // without ever passing through express.json().
-  app.use(pinoHttp({ logger, autoLogging: { ignore: (req) => req.url === '/health' } }));
+  // req.log still gets attached in tests (errorHandler relies on it existing)
+  // — only the noisy per-request "request completed" line is switched off,
+  // which would otherwise drown out the actual test runner output.
+  app.use(pinoHttp({ logger, autoLogging: isTest ? false : { ignore: (req) => req.url === '/health' } }));
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
 
