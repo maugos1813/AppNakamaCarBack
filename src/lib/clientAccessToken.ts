@@ -39,5 +39,5 @@ export function verifyClientAccessToken(token: string): { entryId: string; clien
 
 export function buildClientTrackingUrl(entryId: string, clientId: string): string {
   const token = signClientAccessToken(entryId, clientId);
-  return `${env.FRONTEND_URL}/track/${token}`;
+  return `${env.FRONTEND_URL}/track?token=${token}`;
 }
