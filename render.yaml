@@ -42,3 +42,5 @@ services:
         sync: false
       - key: EMAIL_FROM
         sync: false
+      - key: ADMIN_NOTIFY_EMAIL
+        sync: false

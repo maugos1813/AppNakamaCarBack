@@ -6,6 +6,7 @@ const invoiceInclude = {
   vehicleEntry: { include: { vehicle: true } },
   items: true,
   payments: { orderBy: { paidAt: 'asc' } },
+  receipts: { orderBy: { createdAt: 'desc' } },
 } satisfies Prisma.InvoiceInclude;
 
 export type InvoiceWithRelations = Prisma.InvoiceGetPayload<{ include: typeof invoiceInclude }>;
@@ -67,6 +68,14 @@ export const invoicesRepository = {
 
   createPayment(data: Prisma.PaymentUncheckedCreateInput): Promise<Payment> {
     return prisma.payment.create({ data });
+  },
+
+  createReceipt(data: Prisma.PaymentReceiptUncheckedCreateInput) {
+    return prisma.paymentReceipt.create({ data });
+  },
+
+  countReceipts(invoiceId: string): Promise<number> {
+    return prisma.paymentReceipt.count({ where: { invoiceId } });
   },
 
   async sumPayments(invoiceId: string): Promise<number> {

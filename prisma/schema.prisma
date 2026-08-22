@@ -287,6 +287,8 @@ enum RepairHistoryEventType {
   INVOICE_ISSUED
   ESTIMATE_APPROVED
   ESTIMATE_REJECTED
+  PAYMENT_RECEIPT_UPLOADED
+  OFFICE_PAYMENT_REQUESTED
 }
 
 model RepairHistory {
@@ -406,6 +408,11 @@ model Invoice {
   status        InvoiceStatus @default(DRAFT)
   notes         String?
 
+  // Set when the client clicks "pay at the office" in the tracking portal —
+  // a heads-up for staff, not a payment record. Left null until then; never
+  // cleared, so the portal can hide the button once it's been used.
+  officePaymentRequestedAt DateTime?
+
   vehicleEntryId String       @unique
   vehicleEntry   VehicleEntry @relation(fields: [vehicleEntryId], references: [id], onDelete: Restrict)
 
@@ -414,6 +421,7 @@ model Invoice {
 
   items    InvoiceItem[]
   payments Payment[]
+  receipts PaymentReceipt[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -465,6 +473,26 @@ model Payment {
   @@index([invoiceId])
   @@index([paidAt])
   @@map("payments")
+}
+
+// A bank-transfer receipt the client uploaded from the tracking portal —
+// supporting evidence for staff to verify manually, never trusted on its own
+// to mark an invoice paid (see Payment, which is the actual source of truth).
+model PaymentReceipt {
+  id         String @id @default(cuid())
+  url        String
+  storageKey String
+  fileName   String
+  mimeType   String
+  sizeBytes  Int
+
+  invoiceId String
+  invoice   Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([invoiceId])
+  @@map("payment_receipts")
 }
 
 // ---------------------------------------------------------------------------

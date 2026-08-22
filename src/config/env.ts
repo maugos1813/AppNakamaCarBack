@@ -29,6 +29,11 @@ const envSchema = z.object({
   RESEND_API_KEY: z.string().min(1),
   EMAIL_FROM: z.string().min(1),
 
+  // Fixed mailbox that gets pinged when a client uploads a payment receipt or
+  // declares they'll pay at the office — not tied to any staff User account,
+  // so it can't reuse the client/staff notification recipient fields.
+  ADMIN_NOTIFY_EMAIL: z.string().email().default('m.agos@gamonaltrasporti.it'),
+
   // Base URL of the (not-yet-built) client-facing frontend, used to build the
   // tracking/approval links embedded in notification emails, e.g.
   // `${FRONTEND_URL}/track/<token>`.

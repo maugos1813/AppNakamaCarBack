@@ -12,7 +12,7 @@ interface Recipient {
   fullName: string;
 }
 
-function buildEmailHtml(title: string, message: string, link?: { url: string; label: string }): string {
+export function buildEmailHtml(title: string, message: string, link?: { url: string; label: string }): string {
   const button = link
     ? `<p style="margin-top: 24px;"><a href="${link.url}" style="background: #1a1a1a; color: #fff; padding: 10px 20px; border-radius: 6px; text-decoration: none;">${link.label}</a></p>`
     : '';

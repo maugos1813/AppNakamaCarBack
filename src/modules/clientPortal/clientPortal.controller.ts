@@ -1,4 +1,5 @@
 import type { Request, Response } from 'express';
+import { ApiError } from '../../utils/ApiError';
 import { sendSuccess } from '../../utils/ApiResponse';
 import { clientPortalService } from './clientPortal.service';
 import { rejectEstimateSchema } from './clientPortal.validation';
@@ -25,5 +26,18 @@ export const clientPortalController = {
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="fattura-${invoiceNumber.replace('/', '-')}.pdf"`);
     res.send(buffer);
+  },
+
+  async uploadPaymentReceipt(req: Request, res: Response) {
+    if (!req.file) {
+      throw ApiError.badRequest('Receipt file is required (field name: "receipt").');
+    }
+    const receipt = await clientPortalService.uploadPaymentReceipt(req.clientAccess!.entryId, req.file);
+    sendSuccess(res, { statusCode: 201, message: 'Payment receipt uploaded successfully.', data: receipt });
+  },
+
+  async requestOfficePayment(req: Request, res: Response) {
+    const invoice = await clientPortalService.requestOfficePayment(req.clientAccess!.entryId);
+    sendSuccess(res, { message: 'Office payment request recorded successfully.', data: invoice });
   },
 };
