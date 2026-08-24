@@ -26,8 +26,9 @@ export const globalRateLimiter = rateLimit({
   handler: tooManyRequestsHandler,
 });
 
-// Much stricter — login is the only unauthenticated endpoint in the API,
-// making it the sole target for password brute-forcing.
+// Much stricter — shared by login and the password-reset endpoints, the
+// only unauthenticated ones in the API and the only targets for
+// brute-forcing or account enumeration.
 export const loginRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 5,

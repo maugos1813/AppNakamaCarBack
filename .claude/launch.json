@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "nakamacar-front",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["-C", "/Users/mauroagostinelli/Desktop/Programacion Maugos/AppNakamaCar/AppNakamaCarFront", "dev"],
+      "port": 3010,
+      "autoPort": true
+    }
+  ]
+}
