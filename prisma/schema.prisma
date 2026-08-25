@@ -325,6 +325,10 @@ model LaborItem {
   hourlyRate  Decimal         @db.Decimal(10, 2)
   total       Decimal         @db.Decimal(10, 2)
   status      LaborItemStatus @default(PENDING)
+  // Set when this item was included in an estimate the client approved —
+  // null means it's still pending (either never sent, or added after a
+  // prior approval and awaiting its own approval round).
+  approvedAt  DateTime?
 
   vehicleEntryId String
   vehicleEntry   VehicleEntry @relation(fields: [vehicleEntryId], references: [id], onDelete: Cascade)
@@ -353,6 +357,8 @@ model Part {
   unitPrice  Decimal    @db.Decimal(10, 2)
   total      Decimal    @db.Decimal(10, 2)
   status     PartStatus @default(PENDING_ORDER)
+  // See LaborItem.approvedAt.
+  approvedAt DateTime?
 
   vehicleEntryId String
   vehicleEntry   VehicleEntry @relation(fields: [vehicleEntryId], references: [id], onDelete: Cascade)
@@ -369,6 +375,8 @@ model OtherCost {
   description String
   amount      Decimal @db.Decimal(10, 2)
   category    String?
+  // See LaborItem.approvedAt.
+  approvedAt  DateTime?
 
   vehicleEntryId String
   vehicleEntry   VehicleEntry @relation(fields: [vehicleEntryId], references: [id], onDelete: Cascade)

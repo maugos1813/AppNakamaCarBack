@@ -135,24 +135,52 @@ export const entriesService = {
     if (!entry) {
       throw ApiError.notFound('Vehicle entry not found.');
     }
-    if (entry.estimateStatus !== 'DRAFT') {
-      throw ApiError.badRequest(`Cannot request approval from estimate status ${entry.estimateStatus}.`);
+    if (entry.estimateStatus === 'PENDING_APPROVAL') {
+      throw ApiError.badRequest('Estimate approval is already pending.');
     }
 
     const estimate = await entriesService.getEstimate(id);
-    if (estimate.grandTotal <= 0) {
-      throw ApiError.badRequest('Cannot request approval for an estimate with no billable items.');
+
+    // "Pending" = not yet approved. On a fresh estimate every item is
+    // pending, so this reduces to the whole estimate. After a prior
+    // approval, only items added since then (approvedAt still null) are
+    // pending — the client only ever gets asked to approve what's new,
+    // never re-shown a total that includes what they already accepted.
+    const pendingLabor = estimate.labor.items.filter((item) => !item.approvedAt);
+    const pendingParts = estimate.parts.items.filter((item) => !item.approvedAt);
+    const pendingOtherCosts = estimate.otherCosts.items.filter((item) => !item.approvedAt);
+    const pendingTotal = roundCurrency(
+      pendingLabor.reduce((sum, item) => sum + Number(item.total), 0) +
+        pendingParts.reduce((sum, item) => sum + Number(item.total), 0) +
+        pendingOtherCosts.reduce((sum, item) => sum + Number(item.amount), 0),
+    );
+
+    if (pendingTotal <= 0) {
+      throw ApiError.badRequest('There are no new billable items to request approval for.');
     }
+
+    const isAdditional =
+      estimate.labor.items.some((item) => item.approvedAt) ||
+      estimate.parts.items.some((item) => item.approvedAt) ||
+      estimate.otherCosts.items.some((item) => item.approvedAt);
 
     const updated = await entriesRepository.update(id, { estimateStatus: 'PENDING_APPROVAL' });
 
     await entriesRepository.createHistoryEvent({
       vehicleEntryId: id,
       eventType: 'NOTE_ADDED',
-      description: `Estimate sent to client for approval (total €${estimate.grandTotal}).`,
+      description: isAdditional
+        ? `Additional cost sent to client for approval (total €${pendingTotal}).`
+        : `Estimate sent to client for approval (total €${pendingTotal}).`,
     });
 
-    await notificationsService.notifyEstimatePendingApproval(id, estimate.grandTotal);
+    await notificationsService.notifyEstimatePendingApproval(id, {
+      labor: pendingLabor,
+      parts: pendingParts,
+      otherCosts: pendingOtherCosts,
+      total: pendingTotal,
+      isAdditional,
+    });
 
     return updated;
   },

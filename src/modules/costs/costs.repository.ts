@@ -23,4 +23,8 @@ export const costsRepository = {
   async delete(id: string): Promise<void> {
     await prisma.otherCost.delete({ where: { id } });
   },
+
+  async approvePending(vehicleEntryId: string, approvedAt: Date): Promise<void> {
+    await prisma.otherCost.updateMany({ where: { vehicleEntryId, approvedAt: null }, data: { approvedAt } });
+  },
 };

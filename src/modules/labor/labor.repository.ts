@@ -23,4 +23,8 @@ export const laborRepository = {
   async delete(id: string): Promise<void> {
     await prisma.laborItem.delete({ where: { id } });
   },
+
+  async approvePending(vehicleEntryId: string, approvedAt: Date): Promise<void> {
+    await prisma.laborItem.updateMany({ where: { vehicleEntryId, approvedAt: null }, data: { approvedAt } });
+  },
 };

@@ -23,4 +23,8 @@ export const partsRepository = {
   async delete(id: string): Promise<void> {
     await prisma.part.delete({ where: { id } });
   },
+
+  async approvePending(vehicleEntryId: string, approvedAt: Date): Promise<void> {
+    await prisma.part.updateMany({ where: { vehicleEntryId, approvedAt: null }, data: { approvedAt } });
+  },
 };

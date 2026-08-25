@@ -7,6 +7,9 @@ import { logger } from '../../lib/logger';
 import { uploadToR2 } from '../../lib/r2';
 import { entriesRepository } from '../entries/entries.repository';
 import { entriesService } from '../entries/entries.service';
+import { laborRepository } from '../labor/labor.repository';
+import { partsRepository } from '../parts/parts.repository';
+import { costsRepository } from '../costs/costs.repository';
 import { repairsRepository } from '../repairs/repairs.repository';
 import { photosRepository } from '../photos/photos.repository';
 import { invoicesRepository } from '../invoices/invoices.repository';
@@ -73,9 +76,19 @@ export const clientPortalService = {
       throw ApiError.badRequest(`Estimate cannot be approved from status ${entry.estimateStatus}.`);
     }
 
+    const approvedAt = new Date();
+    // Locks in every item that was pending as of this approval — later
+    // additions start out unapproved again, so a future approval round only
+    // ever covers what's new since this moment.
+    await Promise.all([
+      laborRepository.approvePending(entryId, approvedAt),
+      partsRepository.approvePending(entryId, approvedAt),
+      costsRepository.approvePending(entryId, approvedAt),
+    ]);
+
     const updated = await entriesRepository.update(entryId, {
       estimateStatus: 'APPROVED',
-      estimateRespondedAt: new Date(),
+      estimateRespondedAt: approvedAt,
       estimateRejectionReason: null,
     });
 

@@ -1,4 +1,4 @@
-import type { NotificationType, VehicleEntryStatus } from '@prisma/client';
+import type { Prisma, NotificationType, VehicleEntryStatus } from '@prisma/client';
 import { sendEmail } from '../../lib/email';
 import { logger } from '../../lib/logger';
 import { buildClientTrackingUrl } from '../../lib/clientAccessToken';
@@ -134,17 +134,41 @@ export const notificationsService = {
     });
   },
 
-  async notifyEstimatePendingApproval(vehicleEntryId: string, estimateTotal: number): Promise<void> {
+  async notifyEstimatePendingApproval(
+    vehicleEntryId: string,
+    pending: {
+      labor: { description: string; total: Prisma.Decimal | number | string }[];
+      parts: { name: string; quantity: number; total: Prisma.Decimal | number | string }[];
+      otherCosts: { description: string; amount: Prisma.Decimal | number | string }[];
+      total: number;
+      isAdditional: boolean;
+    },
+  ): Promise<void> {
     const entry = await entriesRepository.findById(vehicleEntryId);
     if (!entry) return;
 
     const client = entry.vehicle.client;
+
+    const lines = [
+      ...pending.labor.map((item) => `• ${item.description} — €${Number(item.total).toFixed(2)}`),
+      ...pending.parts.map(
+        (item) => `• ${item.name}${item.quantity > 1 ? ` × ${item.quantity}` : ''} — €${Number(item.total).toFixed(2)}`,
+      ),
+      ...pending.otherCosts.map((item) => `• ${item.description} — €${Number(item.amount).toFixed(2)}`),
+    ];
+    const itemsList = lines.length > 0 ? `<br>${lines.join('<br>')}<br><br>` : '';
+
+    const title = pending.isAdditional ? 'Nuovo costo aggiuntivo da approvare' : 'Preventivo pronto per approvazione';
+    const message = pending.isAdditional
+      ? `Durante la riparazione del veicolo targa ${entry.vehicle.licensePlate} è stato aggiunto un costo aggiuntivo, da approvare separatamente rispetto a quanto già confermato:${itemsList}Totale aggiuntivo: €${pending.total.toFixed(2)}. Questo importo si somma a quanto già approvato in precedenza.`
+      : `Il preventivo per il veicolo targa ${entry.vehicle.licensePlate} è pronto:${itemsList}Totale: €${pending.total.toFixed(2)}. Prima di iniziare la riparazione abbiamo bisogno della tua conferma.`;
+
     await notifyClient({
       recipient: { id: client.id, email: client.email, fullName: client.fullName },
       vehicleEntryId,
       type: 'ESTIMATE_PENDING_APPROVAL',
-      title: 'Preventivo pronto per approvazione',
-      message: `Il preventivo per il veicolo targa ${entry.vehicle.licensePlate} è pronto: totale stimato €${estimateTotal}. Prima di iniziare la riparazione abbiamo bisogno della tua conferma.`,
+      title,
+      message,
       link: { url: buildClientTrackingUrl(vehicleEntryId, client.id), label: 'Vedi e approva il preventivo' },
     });
   },
