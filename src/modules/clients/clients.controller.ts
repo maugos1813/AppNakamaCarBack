@@ -36,4 +36,9 @@ export const clientsController = {
     const client = await clientsService.enablePortalAccess(req.params.id as string);
     sendSuccess(res, { message: 'Portal access enabled successfully.', data: client });
   },
+
+  async disablePortal(req: Request, res: Response) {
+    const client = await clientsService.disablePortalAccess(req.params.id as string);
+    sendSuccess(res, { message: 'Portal access disabled successfully.', data: client });
+  },
 };

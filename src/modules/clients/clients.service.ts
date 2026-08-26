@@ -80,4 +80,17 @@ export const clientsService = {
 
     return updated;
   },
+
+  // Doesn't touch passwordHash — portalEnabled is the single fresh-checked
+  // switch (see authenticateClientSession) that actually gates access, so
+  // flipping it off revokes every active session immediately without
+  // needing to also wipe the password. Re-enabling later sends a fresh
+  // setup link rather than resurrecting the old password.
+  async disablePortalAccess(id: string) {
+    const client = await clientsRepository.findById(id);
+    if (!client) {
+      throw ApiError.notFound('Client not found.');
+    }
+    return clientsRepository.update(id, { portalEnabled: false });
+  },
 };
