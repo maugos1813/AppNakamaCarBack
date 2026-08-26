@@ -50,6 +50,7 @@ export const updateClientSchema = z.object({
 export const listClientsQuerySchema = z.object({
   search: z.string().optional(),
   isCompany: z.coerce.boolean().optional(),
+  portalEnabled: z.coerce.boolean().optional(),
   page: z.coerce.number().int().positive().default(1),
   pageSize: z.coerce.number().int().positive().max(100).default(20),
 });

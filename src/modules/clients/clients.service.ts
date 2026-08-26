@@ -9,7 +9,7 @@ import type { CreateClientInput, ListClientsQuery, UpdateClientInput } from './c
 export const clientsService = {
   async listClients(query: ListClientsQuery) {
     const { items, total } = await clientsRepository.findMany(
-      { search: query.search, isCompany: query.isCompany },
+      { search: query.search, isCompany: query.isCompany, portalEnabled: query.portalEnabled },
       { page: query.page, pageSize: query.pageSize },
     );
 

@@ -7,6 +7,7 @@ export type ClientRecord = Client;
 interface ListClientsFilters {
   search?: string;
   isCompany?: boolean;
+  portalEnabled?: boolean;
 }
 
 interface Pagination {
@@ -33,6 +34,7 @@ export const clientsRepository = {
   ): Promise<{ items: ClientRecord[]; total: number }> {
     const where: Prisma.ClientWhereInput = {
       ...(filters.isCompany !== undefined ? { isCompany: filters.isCompany } : {}),
+      ...(filters.portalEnabled !== undefined ? { portalEnabled: filters.portalEnabled } : {}),
       ...(filters.search
         ? {
             OR: [
