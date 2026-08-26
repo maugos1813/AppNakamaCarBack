@@ -52,4 +52,9 @@ export const entriesController = {
     const entry = await entriesService.requestEstimateApproval(req.params.id as string);
     sendSuccess(res, { message: 'Estimate approval requested successfully.', data: entry });
   },
+
+  async remove(req: Request, res: Response) {
+    await entriesService.deleteEntry(req.params.id as string);
+    sendSuccess(res, { message: 'Vehicle entry deleted successfully.' });
+  },
 };

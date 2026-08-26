@@ -2,10 +2,14 @@ import type { VehicleEntryStatus } from '@prisma/client';
 import { ApiError } from '../../utils/ApiError';
 import { roundCurrency } from '../../utils/money';
 import { TAX_RATE } from '../../config/constants';
+import { logger } from '../../lib/logger';
+import { deleteFromR2 } from '../../lib/r2';
 import { vehiclesRepository } from '../vehicles/vehicles.repository';
 import { laborRepository } from '../labor/labor.repository';
 import { partsRepository } from '../parts/parts.repository';
 import { costsRepository } from '../costs/costs.repository';
+import { photosRepository } from '../photos/photos.repository';
+import { invoicesRepository } from '../invoices/invoices.repository';
 import { repairsService } from '../repairs/repairs.service';
 import { notificationsService } from '../notifications/notifications.service';
 import { entriesRepository } from './entries.repository';
@@ -105,6 +109,39 @@ export const entriesService = {
       throw ApiError.notFound('Vehicle entry not found.');
     }
     return entriesRepository.update(id, input);
+  },
+
+  // Full, permanent delete — including its invoice and any payments already
+  // recorded against it, unlike cancelInvoice which refuses once money has
+  // changed hands. Admin-only and meant for wiping out test data, not a
+  // routine action once the shop is handling real jobs.
+  async deleteEntry(id: string) {
+    const entry = await entriesRepository.findById(id);
+    if (!entry) {
+      throw ApiError.notFound('Vehicle entry not found.');
+    }
+
+    const [photos, invoice] = await Promise.all([
+      photosRepository.findByEntryId(id),
+      entry.invoice ? invoicesRepository.findById(entry.invoice.id) : null,
+    ]);
+
+    await entriesRepository.transaction(async (tx) => {
+      if (invoice) {
+        await tx.payment.deleteMany({ where: { invoiceId: invoice.id } });
+        await tx.invoice.delete({ where: { id: invoice.id } });
+      }
+      await tx.vehicleEntry.delete({ where: { id } });
+    });
+
+    // Best-effort — the database rows are already gone regardless of
+    // whether these R2 objects actually get cleaned up.
+    const storageKeys = [...photos.map((p) => p.storageKey), ...(invoice?.receipts.map((r) => r.storageKey) ?? [])];
+    await Promise.all(
+      storageKeys.map((key) =>
+        deleteFromR2(key).catch((err) => logger.error({ err, key }, 'Failed to delete R2 object during entry deletion')),
+      ),
+    );
   },
 
   async changeStatus(id: string, input: ChangeEntryStatusInput, performedByUserId: string) {

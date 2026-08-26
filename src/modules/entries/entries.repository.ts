@@ -68,6 +68,10 @@ export const entriesRepository = {
     return prisma.vehicleEntry.update({ where: { id }, data });
   },
 
+  transaction<T>(fn: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T> {
+    return prisma.$transaction(fn);
+  },
+
   createHistoryEvent(data: {
     vehicleEntryId: string;
     eventType: RepairHistoryEventType;
