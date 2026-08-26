@@ -1,7 +1,6 @@
 import { z } from 'zod';
 
 export const createInvoiceSchema = z.object({
-  taxRate: z.coerce.number().min(0).max(100).optional(),
   dueDate: z.coerce.date().optional(),
   notes: z.string().optional(),
 });

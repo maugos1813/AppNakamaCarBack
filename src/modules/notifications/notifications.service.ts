@@ -140,7 +140,10 @@ export const notificationsService = {
       labor: { description: string; total: Prisma.Decimal | number | string }[];
       parts: { name: string; quantity: number; total: Prisma.Decimal | number | string }[];
       otherCosts: { description: string; amount: Prisma.Decimal | number | string }[];
-      total: number;
+      subtotal: number;
+      taxRate: number;
+      taxAmount: number;
+      totalWithTax: number;
       isAdditional: boolean;
     },
   ): Promise<void> {
@@ -157,11 +160,12 @@ export const notificationsService = {
       ...pending.otherCosts.map((item) => `• ${item.description} — €${Number(item.amount).toFixed(2)}`),
     ];
     const itemsList = lines.length > 0 ? `<br>${lines.join('<br>')}<br><br>` : '';
+    const taxBreakdown = `Imponibile: €${pending.subtotal.toFixed(2)}<br>IVA (${pending.taxRate}%): €${pending.taxAmount.toFixed(2)}<br>Totale (IVA inclusa): €${pending.totalWithTax.toFixed(2)}`;
 
     const title = pending.isAdditional ? 'Nuovo costo aggiuntivo da approvare' : 'Preventivo pronto per approvazione';
     const message = pending.isAdditional
-      ? `Durante la riparazione del veicolo targa ${entry.vehicle.licensePlate} è stato aggiunto un costo aggiuntivo, da approvare separatamente rispetto a quanto già confermato:${itemsList}Totale aggiuntivo: €${pending.total.toFixed(2)}. Questo importo si somma a quanto già approvato in precedenza.`
-      : `Il preventivo per il veicolo targa ${entry.vehicle.licensePlate} è pronto:${itemsList}Totale: €${pending.total.toFixed(2)}. Prima di iniziare la riparazione abbiamo bisogno della tua conferma.`;
+      ? `Durante la riparazione del veicolo targa ${entry.vehicle.licensePlate} è stato aggiunto un costo aggiuntivo, da approvare separatamente rispetto a quanto già confermato:${itemsList}${taxBreakdown}<br><br>Questo importo si somma a quanto già approvato in precedenza.`
+      : `Il preventivo per il veicolo targa ${entry.vehicle.licensePlate} è pronto:${itemsList}${taxBreakdown}<br><br>Prima di iniziare la riparazione abbiamo bisogno della tua conferma.`;
 
     await notifyClient({
       recipient: { id: client.id, email: client.email, fullName: client.fullName },

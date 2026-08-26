@@ -1,13 +1,12 @@
 import { ApiError } from '../../utils/ApiError';
 import { roundCurrency } from '../../utils/money';
+import { TAX_RATE } from '../../config/constants';
 import { generateInvoicePdf } from '../../lib/pdf/invoicePdf';
 import { entriesRepository } from '../entries/entries.repository';
 import { entriesService } from '../entries/entries.service';
 import { notificationsService } from '../notifications/notifications.service';
 import { invoicesRepository } from './invoices.repository';
 import type { CreateInvoiceInput, CreatePaymentInput, ListInvoicesQuery } from './invoices.validation';
-
-const DEFAULT_TAX_RATE = 22;
 
 async function withPaymentSummary(invoiceId: string, totalAmount: number) {
   const amountPaid = roundCurrency(await invoicesRepository.sumPayments(invoiceId));
@@ -61,9 +60,11 @@ export const invoicesService = {
       throw ApiError.badRequest('Cannot create an invoice with no billable items.');
     }
 
-    const taxRate = input.taxRate ?? DEFAULT_TAX_RATE;
+    // Same fixed rate the client already saw and approved at estimate time
+    // (entriesService.getEstimate) — never re-chosen here, so the invoice
+    // total can't drift from what was approved.
     const subtotal = estimate.grandTotal;
-    const taxAmount = roundCurrency(subtotal * (taxRate / 100));
+    const taxAmount = roundCurrency(subtotal * (TAX_RATE / 100));
     const totalAmount = roundCurrency(subtotal + taxAmount);
 
     return invoicesRepository.transaction(async (tx) => {
@@ -72,7 +73,7 @@ export const invoicesService = {
           vehicleEntryId,
           clientId: entry.vehicle.clientId,
           subtotal,
-          taxRate,
+          taxRate: TAX_RATE,
           taxAmount,
           totalAmount,
           dueDate: input.dueDate,

@@ -18,13 +18,16 @@ export const financeService = {
     const from = query.from ?? new Date(now.getFullYear(), 0, 1);
     const to = query.to ?? now;
 
-    const [totalInvoiced, totalCollected, outstandingBalance, byStatusRaw, byMethodRaw] = await Promise.all([
-      financeRepository.sumInvoicedInPeriod(from, to),
-      financeRepository.sumCollectedInPeriod(from, to),
-      financeRepository.outstandingBalance(),
-      financeRepository.invoiceCountByStatus(),
-      financeRepository.paymentsByMethodInPeriod(from, to),
-    ]);
+    const [totalInvoiced, totalCollected, outstandingBalance, byStatusRaw, byMethodRaw, subtotalInPeriod, partsCostInPeriod] =
+      await Promise.all([
+        financeRepository.sumInvoicedInPeriod(from, to),
+        financeRepository.sumCollectedInPeriod(from, to),
+        financeRepository.outstandingBalance(),
+        financeRepository.invoiceCountByStatus(),
+        financeRepository.paymentsByMethodInPeriod(from, to),
+        financeRepository.sumSubtotalInPeriod(from, to),
+        financeRepository.sumPartsCostInPeriod(from, to),
+      ]);
 
     const monthKeys = lastTwelveMonthsKeys();
     const since = new Date(now.getFullYear(), now.getMonth() - 11, 1);
@@ -55,6 +58,14 @@ export const financeService = {
         totalAmount: roundCurrency(Number(row._sum.amount ?? 0)),
       })),
       revenueByMonth,
+      // Partial profit view — only nets out parts cost (the one cost basis
+      // the system tracks today). Labor and other costs have no stored
+      // internal cost, so they're counted as full revenue here.
+      profit: {
+        revenue: roundCurrency(subtotalInPeriod),
+        partsCost: roundCurrency(partsCostInPeriod),
+        estimatedProfit: roundCurrency(subtotalInPeriod - partsCostInPeriod),
+      },
     };
   },
 

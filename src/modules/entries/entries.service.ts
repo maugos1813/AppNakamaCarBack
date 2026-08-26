@@ -1,6 +1,7 @@
 import type { VehicleEntryStatus } from '@prisma/client';
 import { ApiError } from '../../utils/ApiError';
 import { roundCurrency } from '../../utils/money';
+import { TAX_RATE } from '../../config/constants';
 import { vehiclesRepository } from '../vehicles/vehicles.repository';
 import { laborRepository } from '../labor/labor.repository';
 import { partsRepository } from '../parts/parts.repository';
@@ -21,6 +22,11 @@ const ALLOWED_TRANSITIONS: Record<VehicleEntryStatus, VehicleEntryStatus[]> = {
   DELIVERED: [],
   CANCELLED: [],
 };
+
+function withTax(subtotal: number) {
+  const taxAmount = roundCurrency(subtotal * (TAX_RATE / 100));
+  return { taxRate: TAX_RATE, taxAmount, totalWithTax: roundCurrency(subtotal + taxAmount) };
+}
 
 export const entriesService = {
   async listEntries(query: ListEntriesQuery) {
@@ -54,12 +60,14 @@ export const entriesService = {
     const laborTotal = roundCurrency(laborItems.reduce((sum, item) => sum + Number(item.total), 0));
     const partsTotal = roundCurrency(parts.reduce((sum, item) => sum + Number(item.total), 0));
     const otherCostsTotal = roundCurrency(otherCosts.reduce((sum, item) => sum + Number(item.amount), 0));
+    const grandTotal = roundCurrency(laborTotal + partsTotal + otherCostsTotal);
 
     return {
       labor: { items: laborItems, total: laborTotal },
       parts: { items: parts, total: partsTotal },
       otherCosts: { items: otherCosts, total: otherCostsTotal },
-      grandTotal: roundCurrency(laborTotal + partsTotal + otherCostsTotal),
+      grandTotal,
+      ...withTax(grandTotal),
     };
   },
 
@@ -159,6 +167,8 @@ export const entriesService = {
       throw ApiError.badRequest('There are no new billable items to request approval for.');
     }
 
+    const pendingTax = withTax(pendingTotal);
+
     const isAdditional =
       estimate.labor.items.some((item) => item.approvedAt) ||
       estimate.parts.items.some((item) => item.approvedAt) ||
@@ -170,15 +180,16 @@ export const entriesService = {
       vehicleEntryId: id,
       eventType: 'NOTE_ADDED',
       description: isAdditional
-        ? `Additional cost sent to client for approval (total €${pendingTotal}).`
-        : `Estimate sent to client for approval (total €${pendingTotal}).`,
+        ? `Additional cost sent to client for approval (total €${pendingTax.totalWithTax}, IVA included).`
+        : `Estimate sent to client for approval (total €${pendingTax.totalWithTax}, IVA included).`,
     });
 
     await notificationsService.notifyEstimatePendingApproval(id, {
       labor: pendingLabor,
       parts: pendingParts,
       otherCosts: pendingOtherCosts,
-      total: pendingTotal,
+      subtotal: pendingTotal,
+      ...pendingTax,
       isAdditional,
     });
 

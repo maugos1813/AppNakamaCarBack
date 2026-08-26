@@ -24,6 +24,30 @@ export const financeRepository = {
     return Number(result._sum.amount ?? 0);
   },
 
+  // Pre-tax revenue — VAT is collected on the government's behalf, not
+  // company earnings, so profit is computed against subtotal, not totalAmount.
+  async sumSubtotalInPeriod(from: Date, to: Date) {
+    const result = await prisma.invoice.aggregate({
+      where: { issueDate: { gte: from, lte: to }, status: { not: 'CANCELLED' } },
+      _sum: { subtotal: true },
+    });
+    return Number(result._sum.subtotal ?? 0);
+  },
+
+  // What the shop paid for the parts on invoiced (non-cancelled) work in the
+  // period — the only cost basis stored today (see Part.unitCost). Labor and
+  // other costs have no internal cost recorded, so they aren't netted out;
+  // this is a partial profit figure, not the shop's true net margin.
+  async sumPartsCostInPeriod(from: Date, to: Date) {
+    const rows = await prisma.$queryRaw<{ total: number | string | null }[]>`
+      SELECT SUM(p."unitCost" * p."quantity")::float as total
+      FROM parts p
+      JOIN invoices i ON i."vehicleEntryId" = p."vehicleEntryId"
+      WHERE i."issueDate" >= ${from} AND i."issueDate" <= ${to} AND i."status" != 'CANCELLED'
+    `;
+    return Number(rows[0]?.total ?? 0);
+  },
+
   async outstandingBalance() {
     const [invoiceTotals, paymentTotals] = await Promise.all([
       prisma.invoice.aggregate({
