@@ -19,6 +19,14 @@ export const clientsRepository = {
     return prisma.client.findUnique({ where: { id }, include: { vehicles: true } });
   },
 
+  // Scoped to portalEnabled — email isn't @unique at the DB level (plenty of
+  // ordinary clients share a blank or duplicate email), but every caller of
+  // this method (login, forgot-password, the enable-portal conflict check)
+  // only ever cares about the one premium account using that email, if any.
+  findByEmail(email: string): Promise<ClientRecord | null> {
+    return prisma.client.findFirst({ where: { email, portalEnabled: true } });
+  },
+
   async findMany(
     filters: ListClientsFilters,
     { page, pageSize }: Pagination,

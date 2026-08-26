@@ -81,6 +81,13 @@ model Client {
 
   notes String?
 
+  // Premium fleet portal — a persistent login for clients with multiple
+  // vehicles, distinct from the single-entry magic-link tracking every
+  // client already gets. Off by default: an admin opts a client in from the
+  // staff panel, which is what actually sends the activation email.
+  passwordHash  String?
+  portalEnabled Boolean @default(false)
+
   vehicles      Vehicle[]
   invoices      Invoice[]
   notifications Notification[]

@@ -31,4 +31,9 @@ export const clientsController = {
     await clientsService.deleteClient(req.params.id as string);
     sendSuccess(res, { message: 'Client deleted successfully.' });
   },
+
+  async enablePortal(req: Request, res: Response) {
+    const client = await clientsService.enablePortalAccess(req.params.id as string);
+    sendSuccess(res, { message: 'Portal access enabled successfully.', data: client });
+  },
 };
