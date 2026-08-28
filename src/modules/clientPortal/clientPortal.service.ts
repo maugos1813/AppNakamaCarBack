@@ -14,7 +14,7 @@ import { repairsRepository } from '../repairs/repairs.repository';
 import { photosRepository } from '../photos/photos.repository';
 import { invoicesRepository } from '../invoices/invoices.repository';
 import { invoicesService } from '../invoices/invoices.service';
-import { buildEmailHtml } from '../notifications/notifications.service';
+import { buildEmailHtml, notificationsService } from '../notifications/notifications.service';
 import type { RejectEstimateInput } from './clientPortal.validation';
 
 const MAX_RECEIPT_IMAGE_WIDTH_PX = 2000;
@@ -119,6 +119,13 @@ export const clientPortalService = {
       description: `Client rejected the repair estimate.${input.reason ? ` Reason: ${input.reason}` : ''}`,
     });
 
+    await notificationsService.notifyAdminsEstimateRejected({
+      vehicleEntryId: entryId,
+      licensePlate: entry.vehicle.licensePlate,
+      clientName: entry.vehicle.client.fullName,
+      reason: input.reason ?? null,
+    });
+
     return updated;
   },
 
@@ -195,6 +202,13 @@ export const clientPortalService = {
         { url: receipt.url, label: 'Ver comprobante' },
       ),
     ).catch((err) => logger.error({ err }, 'Failed to notify admin about an uploaded payment receipt'));
+
+    await notificationsService.notifyAdminsPaymentReceiptUploaded({
+      vehicleEntryId: entryId,
+      licensePlate: entry.vehicle.licensePlate,
+      clientName: entry.vehicle.client.fullName,
+      invoiceNumber: invoice.invoiceNumber,
+    });
 
     return receipt;
   },

@@ -32,6 +32,9 @@ export const listEntriesQuerySchema = z.object({
   vehicleId: z.string().optional(),
   clientId: z.string().optional(),
   status: entryStatusSchema.optional(),
+  search: z.string().optional(),
+  from: z.coerce.date().optional(),
+  to: z.coerce.date().optional(),
   page: z.coerce.number().int().positive().default(1),
   pageSize: z.coerce.number().int().positive().max(100).default(20),
 });

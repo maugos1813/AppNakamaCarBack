@@ -48,6 +48,8 @@ model User {
   recordedPayments Payment[]
   notifications    Notification[]
   activityLogs     ActivityLog[]
+  workRequests     WorkRequestItem[]
+  materialRequests MaterialRequest[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -180,6 +182,7 @@ model VehicleEntry {
   otherCosts    OtherCost[]
   invoice       Invoice?
   notifications Notification[]
+  workRequests  WorkRequestItem[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -238,6 +241,83 @@ model Damage {
 
   @@index([vehicleEntryId])
   @@map("damages")
+}
+
+// A mechanic's write-up of work that needs doing, with no price attached —
+// they aren't the ones who set prices. An admin reviews these ("Richiesta"),
+// prices what's needed as real LaborItem/Part rows using the existing
+// forms, and marks the request PRICED. Deliberately not linked to the
+// LaborItem/Part it produced: pricing one request can turn into several
+// line items (or a mix of labor and parts), so this stays a simple
+// worklist, not a 1:1 conversion record.
+enum WorkRequestStatus {
+  PENDING
+  PRICED
+  DISMISSED
+}
+
+model WorkRequestItem {
+  id          String            @id @default(cuid())
+  description String
+  status      WorkRequestStatus @default(PENDING)
+
+  vehicleEntryId String
+  vehicleEntry   VehicleEntry @relation(fields: [vehicleEntryId], references: [id], onDelete: Cascade)
+
+  createdByUserId String?
+  createdBy       User?   @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([vehicleEntryId])
+  @@index([status])
+  @@map("work_request_items")
+}
+
+// ---------------------------------------------------------------------------
+// Shop inventory — a real running stock count per material, adjusted by hand
+// whenever stock is bought or used, rather than derived automatically from
+// Parts on an entry (those are billed items on a job, not shop stock).
+model InventoryItem {
+  id          String   @id @default(cuid())
+  name        String
+  unit        String
+  quantity    Decimal  @default(0) @db.Decimal(10, 2)
+  minQuantity Decimal? @db.Decimal(10, 2)
+  notes       String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("inventory_items")
+}
+
+// A mechanic's ask for material the shop doesn't have on hand (or isn't sure
+// it does) — deliberately not linked to InventoryItem, since half of what
+// gets requested here doesn't exist as a tracked item yet. Approving a
+// request is just an acknowledgement; stock itself is only ever adjusted by
+// hand on InventoryItem once the material actually arrives.
+enum MaterialRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model MaterialRequest {
+  id          String                @id @default(cuid())
+  description String
+  quantity    Int                   @default(1)
+  status      MaterialRequestStatus @default(PENDING)
+
+  createdByUserId String?
+  createdBy       User?   @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@map("material_requests")
 }
 
 // ---------------------------------------------------------------------------

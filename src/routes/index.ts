@@ -13,10 +13,13 @@ import { entryStagesRouter, stagesRouter } from '../modules/repairs/repairs.rout
 import { entryInvoiceRouter, invoicesRouter } from '../modules/invoices/invoices.routes';
 import { dashboardRouter } from '../modules/dashboard/dashboard.routes';
 import { financeRouter } from '../modules/finance/finance.routes';
-import { entryNotificationsRouter } from '../modules/notifications/notifications.routes';
+import { entryNotificationsRouter, staffNotificationsRouter } from '../modules/notifications/notifications.routes';
 import { clientPortalRouter } from '../modules/clientPortal/clientPortal.routes';
 import { clientAuthRouter } from '../modules/clientAuth/clientAuth.routes';
 import { clientFleetRouter } from '../modules/clientFleet/clientFleet.routes';
+import { entryWorkRequestsRouter, workRequestsRouter } from '../modules/workRequests/workRequests.routes';
+import { inventoryRouter } from '../modules/inventory/inventory.routes';
+import { materialRequestsRouter } from '../modules/materialRequests/materialRequests.routes';
 
 // Central mount point for every feature module's router.
 export const apiRouter = Router();
@@ -35,6 +38,7 @@ apiRouter.use('/entries/:entryId/costs', entryCostsRouter);
 apiRouter.use('/entries/:entryId/stages', entryStagesRouter);
 apiRouter.use('/entries/:entryId/invoice', entryInvoiceRouter);
 apiRouter.use('/entries/:entryId/notifications', entryNotificationsRouter);
+apiRouter.use('/entries/:entryId/work-requests', entryWorkRequestsRouter);
 apiRouter.use('/entries', entriesRouter);
 apiRouter.use('/photos', photosRouter);
 apiRouter.use('/damages', damagesRouter);
@@ -43,6 +47,10 @@ apiRouter.use('/parts', partsRouter);
 apiRouter.use('/costs', costsRouter);
 apiRouter.use('/stages', stagesRouter);
 apiRouter.use('/invoices', invoicesRouter);
+apiRouter.use('/work-requests', workRequestsRouter);
+apiRouter.use('/inventory-items', inventoryRouter);
+apiRouter.use('/material-requests', materialRequestsRouter);
+apiRouter.use('/notifications', staffNotificationsRouter);
 apiRouter.use('/dashboard', dashboardRouter);
 apiRouter.use('/finance', financeRouter);
 apiRouter.use('/client/:token', clientPortalRouter);

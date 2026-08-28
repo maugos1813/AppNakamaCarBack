@@ -24,6 +24,9 @@ interface ListEntriesFilters {
   vehicleId?: string;
   clientId?: string;
   status?: VehicleEntry['status'];
+  search?: string;
+  from?: Date;
+  to?: Date;
 }
 
 interface Pagination {
@@ -42,8 +45,32 @@ export const entriesRepository = {
   ): Promise<{ items: EntryWithRelations[]; total: number }> {
     const where: Prisma.VehicleEntryWhereInput = {
       ...(filters.vehicleId ? { vehicleId: filters.vehicleId } : {}),
-      ...(filters.clientId ? { vehicle: { clientId: filters.clientId } } : {}),
       ...(filters.status ? { status: filters.status } : {}),
+      ...(filters.from || filters.to
+        ? {
+            entryDate: {
+              ...(filters.from ? { gte: filters.from } : {}),
+              ...(filters.to ? { lte: filters.to } : {}),
+            },
+          }
+        : {}),
+      ...(filters.clientId || filters.search
+        ? {
+            vehicle: {
+              ...(filters.clientId ? { clientId: filters.clientId } : {}),
+              ...(filters.search
+                ? {
+                    OR: [
+                      { licensePlate: { contains: filters.search, mode: 'insensitive' } },
+                      { vin: { contains: filters.search, mode: 'insensitive' } },
+                      { client: { fullName: { contains: filters.search, mode: 'insensitive' } } },
+                      { client: { companyName: { contains: filters.search, mode: 'insensitive' } } },
+                    ],
+                  }
+                : {}),
+            },
+          }
+        : {}),
     };
 
     const [items, total] = await Promise.all([

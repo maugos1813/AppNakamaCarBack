@@ -28,4 +28,31 @@ export const notificationsRepository = {
       orderBy: { createdAt: 'desc' },
     });
   },
+
+  // Staff-facing in-app notifications (e.g. "new Richiesta") — a distinct
+  // list from findByEntryId, which is the client-facing send log an admin
+  // reviews from inside one entry.
+  findByUserId(userId: string, limit = 50): Promise<NotificationRecord[]> {
+    return prisma.notification.findMany({
+      where: { recipientUserId: userId, channel: 'IN_APP' },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+    });
+  },
+
+  async markRead(id: string, userId: string): Promise<NotificationRecord | null> {
+    const result = await prisma.notification.updateMany({
+      where: { id, recipientUserId: userId },
+      data: { isRead: true },
+    });
+    if (result.count === 0) return null;
+    return prisma.notification.findUnique({ where: { id } });
+  },
+
+  findActiveAdminIds(): Promise<{ id: string }[]> {
+    return prisma.user.findMany({
+      where: { isActive: true, role: { name: 'ADMIN' } },
+      select: { id: true },
+    });
+  },
 };

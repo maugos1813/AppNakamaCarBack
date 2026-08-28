@@ -16,7 +16,7 @@ async function withPaymentSummary(invoiceId: string, totalAmount: number) {
 export const invoicesService = {
   async listInvoices(query: ListInvoicesQuery) {
     const { items, total } = await invoicesRepository.findMany(
-      { clientId: query.clientId, status: query.status },
+      { clientId: query.clientId, status: query.status, paid: query.paid },
       { page: query.page, pageSize: query.pageSize },
     );
     return { items, pagination: { page: query.page, pageSize: query.pageSize, total } };

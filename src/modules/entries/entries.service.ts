@@ -35,7 +35,14 @@ function withTax(subtotal: number) {
 export const entriesService = {
   async listEntries(query: ListEntriesQuery) {
     const { items, total } = await entriesRepository.findMany(
-      { vehicleId: query.vehicleId, clientId: query.clientId, status: query.status },
+      {
+        vehicleId: query.vehicleId,
+        clientId: query.clientId,
+        status: query.status,
+        search: query.search,
+        from: query.from,
+        to: query.to,
+      },
       { page: query.page, pageSize: query.pageSize },
     );
     return { items, pagination: { page: query.page, pageSize: query.pageSize, total } };
@@ -159,6 +166,13 @@ export const entriesService = {
       throw ApiError.badRequest(
         `Cannot change status from ${existing.status} to ${input.status}.`,
       );
+    }
+
+    // A vehicle only ever has an invoice once it's actually being billed —
+    // if there isn't one, there's nothing to collect (e.g. warranty work),
+    // so only block delivery when an invoice exists and isn't PAID yet.
+    if (input.status === 'DELIVERED' && existing.invoice && existing.invoice.status !== 'PAID') {
+      throw ApiError.badRequest('Cannot mark as delivered — the invoice has not been paid yet.');
     }
 
     const updated = await entriesRepository.update(id, { status: input.status });

@@ -81,6 +81,30 @@ async function notifyClient(params: {
   }
 }
 
+// Fans an in-app-only notification out to every active admin — no email,
+// so it never fails the way notifyClient can.
+async function notifyAllAdmins(params: {
+  title: string;
+  message: string;
+  relatedVehicleEntryId?: string;
+}): Promise<void> {
+  const admins = await notificationsRepository.findActiveAdminIds();
+  await Promise.all(
+    admins.map((admin) =>
+      notificationsRepository.create({
+        type: 'GENERIC',
+        channel: 'IN_APP',
+        title: params.title,
+        message: params.message,
+        status: 'SENT',
+        sentAt: new Date(),
+        recipientUserId: admin.id,
+        relatedVehicleEntryId: params.relatedVehicleEntryId,
+      }),
+    ),
+  );
+}
+
 const STATUS_MESSAGES: Partial<Record<VehicleEntryStatus, { title: string; message: (plate: string) => string }>> = {
   COMPLETED: {
     title: 'Il tuo veicolo è pronto per il ritiro',
@@ -183,5 +207,66 @@ export const notificationsService = {
       throw ApiError.notFound('Vehicle entry not found.');
     }
     return notificationsRepository.findByEntryId(vehicleEntryId);
+  },
+
+  // In-app only — no email, so it never fails the way notifyClient can, and
+  // isn't wrapped in the same try/catch delivery-tracking dance. Shared by
+  // every notifyAdmins* helper below.
+  async notifyAdminsNewWorkRequest(params: {
+    vehicleEntryId: string;
+    licensePlate: string;
+    description: string;
+    createdByName: string;
+  }): Promise<void> {
+    await notifyAllAdmins({
+      title: `Nueva richiesta — ${params.licensePlate}`,
+      message: `${params.createdByName} agregó: "${params.description}"`,
+      relatedVehicleEntryId: params.vehicleEntryId,
+    });
+  },
+
+  async notifyAdminsEstimateRejected(params: {
+    vehicleEntryId: string;
+    licensePlate: string;
+    clientName: string;
+    reason: string | null;
+  }): Promise<void> {
+    await notifyAllAdmins({
+      title: `Presupuesto rechazado — ${params.licensePlate}`,
+      message: `${params.clientName} rechazó el presupuesto.${params.reason ? ` Motivo: "${params.reason}"` : ''}`,
+      relatedVehicleEntryId: params.vehicleEntryId,
+    });
+  },
+
+  async notifyAdminsPaymentReceiptUploaded(params: {
+    vehicleEntryId: string;
+    licensePlate: string;
+    clientName: string;
+    invoiceNumber: string | null;
+  }): Promise<void> {
+    await notifyAllAdmins({
+      title: `Comprobante de pago — ${params.licensePlate}`,
+      message: `${params.clientName} subió un comprobante de pago${params.invoiceNumber ? ` para la factura ${params.invoiceNumber}` : ''}.`,
+      relatedVehicleEntryId: params.vehicleEntryId,
+    });
+  },
+
+  async notifyAdminsLowStock(params: { name: string; quantity: string | number; unit: string }): Promise<void> {
+    await notifyAllAdmins({
+      title: `Stock bajo — ${params.name}`,
+      message: `Quedan ${params.quantity} ${params.unit} de "${params.name}". Puede que haga falta reponer.`,
+    });
+  },
+
+  listMine(userId: string) {
+    return notificationsRepository.findByUserId(userId);
+  },
+
+  async markRead(id: string, userId: string) {
+    const updated = await notificationsRepository.markRead(id, userId);
+    if (!updated) {
+      throw ApiError.notFound('Notification not found.');
+    }
+    return updated;
   },
 };

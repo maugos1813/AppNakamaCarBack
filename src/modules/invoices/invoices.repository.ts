@@ -15,6 +15,9 @@ export type InvoiceRecord = Invoice;
 interface ListInvoicesFilters {
   clientId?: string;
   status?: Invoice['status'];
+  // Separate from `status` — the staff list splits invoices into two tabs
+  // (Pagadas / No pagadas) rather than one status at a time.
+  paid?: boolean;
 }
 
 interface Pagination {
@@ -38,6 +41,7 @@ export const invoicesRepository = {
     const where: Prisma.InvoiceWhereInput = {
       ...(filters.clientId ? { clientId: filters.clientId } : {}),
       ...(filters.status ? { status: filters.status } : {}),
+      ...(filters.paid !== undefined ? { status: filters.paid ? 'PAID' : { not: 'PAID' } } : {}),
     };
 
     const [items, total] = await Promise.all([
