@@ -42,6 +42,7 @@ model User {
   role   Role   @relation(fields: [roleId], references: [id], onDelete: Restrict)
 
   receivedEntries  VehicleEntry[]  @relation("EntryReceivedBy")
+  completedEntries VehicleEntry[]  @relation("EntryCompletedBy")
   uploadedPhotos   VehiclePhoto[]
   assignedStages   RepairStage[]
   historyEvents    RepairHistory[]
@@ -50,6 +51,7 @@ model User {
   activityLogs     ActivityLog[]
   workRequests     WorkRequestItem[]
   materialRequests MaterialRequest[]
+  deviceTokens     DeviceToken[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -172,6 +174,27 @@ model VehicleEntry {
 
   receivedByUserId String?
   receivedBy       User?   @relation("EntryReceivedBy", fields: [receivedByUserId], references: [id], onDelete: SetNull)
+
+  // Set the moment status flips to COMPLETED — who actually finished the
+  // job and when, independent of updatedAt (which any later edit bumps).
+  // Used for mechanic productivity and repair-time reporting.
+  completedAt       DateTime?
+  completedByUserId String?
+  completedBy       User?     @relation("EntryCompletedBy", fields: [completedByUserId], references: [id], onDelete: SetNull)
+
+  // Physical, in-person sign-off captured on a staff device at the counter
+  // (not through the client portal). Kept as an optional backup record in
+  // case of a dispute — nothing in the app requires it to proceed.
+  intakeSignatureUrl   String?
+  intakeSignedAt       DateTime?
+  intakeSignedByName   String?
+  deliverySignatureUrl String?
+  deliverySignedAt     DateTime?
+  deliverySignedByName String?
+
+  // Last time an automated "come pick it up" reminder was emailed — gates
+  // the reminder scheduler from re-sending too often.
+  lastPickupReminderSentAt DateTime?
 
   photos        VehiclePhoto[]
   damages       Damage[]
@@ -508,6 +531,9 @@ model Invoice {
   // cleared, so the portal can hide the button once it's been used.
   officePaymentRequestedAt DateTime?
 
+  // Last time an automated overdue-payment reminder was emailed to the client.
+  lastOverdueReminderSentAt DateTime?
+
   vehicleEntryId String       @unique
   vehicleEntry   VehicleEntry @relation(fields: [vehicleEntryId], references: [id], onDelete: Restrict)
 
@@ -645,6 +671,26 @@ model Notification {
   @@index([recipientClientId, isRead])
   @@index([relatedVehicleEntryId])
   @@map("notifications")
+}
+
+// A registered Android device (Firebase Cloud Messaging token) for a staff
+// user, so an IN_APP notification can also be pushed to their phone. One
+// user can have several — several devices, or a token that changed after a
+// reinstall. Unique on token so re-registering the same device just moves
+// it to whoever's currently logged in there, instead of erroring.
+model DeviceToken {
+  id       String @id @default(cuid())
+  token    String @unique
+  platform String @default("android")
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@map("device_tokens")
 }
 
 model ActivityLog {

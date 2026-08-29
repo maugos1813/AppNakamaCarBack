@@ -2,11 +2,13 @@ import { createApp } from './app';
 import { env } from './config/env';
 import { prisma } from './lib/prisma';
 import { logger } from './lib/logger';
+import { startScheduler } from './lib/scheduler';
 
 const app = createApp();
 
 const server = app.listen(env.PORT, () => {
   logger.info(`Server listening on port ${env.PORT} (${env.NODE_ENV})`);
+  startScheduler();
 });
 
 async function shutdown(signal: string) {

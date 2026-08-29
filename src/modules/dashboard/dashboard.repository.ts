@@ -21,12 +21,16 @@ export const dashboardRepository = {
     return prisma.workRequestItem.count({ where: { status: 'PENDING' } });
   },
 
-  // Approximates "days since it was marked ready" with updatedAt — there's
-  // no dedicated completedAt column, and in practice nothing else touches
-  // an entry once it's COMPLETED and waiting on pickup.
+  // completedAt is the precise "marked ready" timestamp; falls back to
+  // updatedAt for rows COMPLETED before that column existed.
   countStaleReadyForPickup(days: number) {
     const threshold = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
-    return prisma.vehicleEntry.count({ where: { status: 'COMPLETED', updatedAt: { lt: threshold } } });
+    return prisma.vehicleEntry.count({
+      where: {
+        status: 'COMPLETED',
+        OR: [{ completedAt: { lt: threshold } }, { completedAt: null, updatedAt: { lt: threshold } }],
+      },
+    });
   },
 
   // Mirrors finance.repository.ts's own OUTSTANDING_STATUSES + dueDate

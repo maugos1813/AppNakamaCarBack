@@ -2,7 +2,10 @@ import type { Prisma, NotificationType, VehicleEntryStatus } from '@prisma/clien
 import { sendEmail } from '../../lib/email';
 import { logger } from '../../lib/logger';
 import { buildClientTrackingUrl } from '../../lib/clientAccessToken';
+import { sendPushNotification } from '../../lib/firebase';
 import { entriesRepository } from '../entries/entries.repository';
+import { invoicesRepository } from '../invoices/invoices.repository';
+import { deviceTokensRepository } from '../deviceTokens/deviceTokens.repository';
 import { ApiError } from '../../utils/ApiError';
 import { notificationsRepository } from './notifications.repository';
 
@@ -89,8 +92,10 @@ async function notifyAllAdmins(params: {
   relatedVehicleEntryId?: string;
 }): Promise<void> {
   const admins = await notificationsRepository.findActiveAdminIds();
+  const adminIds = admins.map((admin) => admin.id);
+
   await Promise.all(
-    admins.map((admin) =>
+    adminIds.map((userId) =>
       notificationsRepository.create({
         type: 'GENERIC',
         channel: 'IN_APP',
@@ -98,11 +103,24 @@ async function notifyAllAdmins(params: {
         message: params.message,
         status: 'SENT',
         sentAt: new Date(),
-        recipientUserId: admin.id,
+        recipientUserId: userId,
         relatedVehicleEntryId: params.relatedVehicleEntryId,
       }),
     ),
   );
+
+  // Same event, also pushed to whichever of those admins have the Android
+  // app installed and registered — a no-op wherever Firebase isn't
+  // configured (see lib/firebase.ts).
+  const tokens = await deviceTokensRepository.findTokensByUserIds(adminIds);
+  if (tokens.length > 0) {
+    const { invalidTokens } = await sendPushNotification(tokens, {
+      title: params.title,
+      body: params.message,
+      data: params.relatedVehicleEntryId ? { entryId: params.relatedVehicleEntryId } : undefined,
+    });
+    await deviceTokensRepository.deleteByTokens(invalidTokens);
+  }
 }
 
 const STATUS_MESSAGES: Partial<Record<VehicleEntryStatus, { title: string; message: (plate: string) => string }>> = {
@@ -198,6 +216,40 @@ export const notificationsService = {
       title,
       message,
       link: { url: buildClientTrackingUrl(vehicleEntryId, client.id), label: 'Vedi e approva il preventivo' },
+    });
+  },
+
+  // Automated reminder — the vehicle's been ready for pickup for a while
+  // and nobody's come to get it. Called by the reminders scheduler.
+  async notifyClientPickupReminder(vehicleEntryId: string): Promise<void> {
+    const entry = await entriesRepository.findById(vehicleEntryId);
+    if (!entry) return;
+
+    const client = entry.vehicle.client;
+    await notifyClient({
+      recipient: { id: client.id, email: client.email, fullName: client.fullName },
+      vehicleEntryId,
+      type: 'VEHICLE_READY',
+      title: 'Il tuo veicolo ti aspetta',
+      message: `Il veicolo targa ${entry.vehicle.licensePlate} è pronto per il ritiro da qualche giorno. Passa a ritirarlo quando vuoi, oppure contattaci per concordare l'orario.`,
+      link: { url: buildClientTrackingUrl(vehicleEntryId, client.id), label: 'Segui la riparazione' },
+    });
+  },
+
+  // Automated reminder — an issued/partially-paid invoice went past its
+  // due date. Called by the reminders scheduler.
+  async notifyClientOverdueInvoiceReminder(invoiceId: string): Promise<void> {
+    const invoice = await invoicesRepository.findById(invoiceId);
+    if (!invoice) return;
+
+    const client = invoice.client;
+    await notifyClient({
+      recipient: { id: client.id, email: client.email, fullName: client.fullName },
+      vehicleEntryId: invoice.vehicleEntryId,
+      type: 'GENERIC',
+      title: 'Fattura scaduta',
+      message: `La fattura n. ${invoice.invoiceNumber ?? invoice.id} (veicolo targa ${invoice.vehicleEntry.vehicle.licensePlate}) di €${invoice.totalAmount} risulta scaduta. Ti chiediamo di regolarizzare il pagamento appena possibile.`,
+      link: { url: buildClientTrackingUrl(invoice.vehicleEntryId, client.id), label: 'Vedi e paga la fattura' },
     });
   },
 

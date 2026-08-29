@@ -15,4 +15,5 @@ entriesRouter.delete('/:id', authorize('ADMIN'), entriesController.remove);
 entriesRouter.get('/:id/history', entriesController.getHistory);
 entriesRouter.get('/:id/estimate', entriesController.getEstimate);
 entriesRouter.patch('/:id/status', entriesController.changeStatus);
+entriesRouter.patch('/:id/signature', entriesController.captureSignature);
 entriesRouter.patch('/:id/estimate/request-approval', entriesController.requestEstimateApproval);

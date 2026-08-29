@@ -1,9 +1,10 @@
+import { randomUUID } from 'node:crypto';
 import type { VehicleEntryStatus } from '@prisma/client';
 import { ApiError } from '../../utils/ApiError';
 import { roundCurrency } from '../../utils/money';
 import { TAX_RATE } from '../../config/constants';
 import { logger } from '../../lib/logger';
-import { deleteFromR2 } from '../../lib/r2';
+import { deleteFromR2, uploadToR2 } from '../../lib/r2';
 import { vehiclesRepository } from '../vehicles/vehicles.repository';
 import { laborRepository } from '../labor/labor.repository';
 import { partsRepository } from '../parts/parts.repository';
@@ -14,6 +15,7 @@ import { repairsService } from '../repairs/repairs.service';
 import { notificationsService } from '../notifications/notifications.service';
 import { entriesRepository } from './entries.repository';
 import type {
+  CaptureSignatureInput,
   ChangeEntryStatusInput,
   CreateEntryInput,
   ListEntriesQuery,
@@ -168,6 +170,18 @@ export const entriesService = {
       );
     }
 
+    // "Listo para retirar" is a claim the shop is actually done — a stage
+    // left PENDING/IN_PROGRESS means the car isn't. SKIPPED counts as
+    // resolved (a stage that legitimately didn't apply to this job).
+    if (input.status === 'COMPLETED') {
+      const unfinished = existing.stages.filter((stage) => stage.status !== 'DONE' && stage.status !== 'SKIPPED');
+      if (unfinished.length > 0) {
+        throw ApiError.badRequest(
+          `Cannot mark as ready for pickup — ${unfinished.length} repair stage(s) are still pending.`,
+        );
+      }
+    }
+
     // A vehicle only ever has an invoice once it's actually being billed —
     // if there isn't one, there's nothing to collect (e.g. warranty work),
     // so only block delivery when an invoice exists and isn't PAID yet.
@@ -175,7 +189,17 @@ export const entriesService = {
       throw ApiError.badRequest('Cannot mark as delivered — the invoice has not been paid yet.');
     }
 
-    const updated = await entriesRepository.update(id, { status: input.status });
+    // Recorded on the way in, cleared on the way back out (reopening to
+    // IN_PROGRESS) — completedAt/completedByUserId should only ever reflect
+    // the current, still-standing completion, for reporting and reminders.
+    const completionFields =
+      input.status === 'COMPLETED'
+        ? { completedAt: new Date(), completedByUserId: performedByUserId }
+        : input.status === 'IN_PROGRESS' && existing.status === 'COMPLETED'
+          ? { completedAt: null, completedByUserId: null }
+          : {};
+
+    const updated = await entriesRepository.update(id, { status: input.status, ...completionFields });
 
     await entriesRepository.createHistoryEvent({
       vehicleEntryId: id,
@@ -185,6 +209,46 @@ export const entriesService = {
     });
 
     await notificationsService.notifyEntryStatusChange(id, input.status);
+
+    return updated;
+  },
+
+  // In-person sign-off captured on a staff device (signature pad) at
+  // intake or at hand-over — kept as an optional backup record, not a
+  // requirement to proceed. Delivery is admin-only, matching who's allowed
+  // to mark the entry DELIVERED in the first place.
+  async captureSignature(id: string, input: CaptureSignatureInput, actingUser: { role: string }) {
+    if (input.type === 'DELIVERY' && actingUser.role !== 'ADMIN') {
+      throw ApiError.forbidden('Only an admin can capture the delivery signature.');
+    }
+
+    const entry = await entriesRepository.findById(id);
+    if (!entry) {
+      throw ApiError.notFound('Vehicle entry not found.');
+    }
+
+    const match = input.imageDataUrl.match(/^data:image\/(png|jpe?g|webp);base64,(.+)$/);
+    if (!match || !match[1] || !match[2]) {
+      throw ApiError.badRequest('imageDataUrl must be a base64 PNG/JPEG/WEBP data URL.');
+    }
+    const extension = match[1];
+    const buffer = Buffer.from(match[2], 'base64');
+    const storageKey = `entries/${id}/signatures/${input.type.toLowerCase()}-${randomUUID()}.${extension}`;
+    const url = await uploadToR2(storageKey, buffer, `image/${extension}`);
+
+    const now = new Date();
+    const data =
+      input.type === 'INTAKE'
+        ? { intakeSignatureUrl: url, intakeSignedAt: now, intakeSignedByName: input.signerName }
+        : { deliverySignatureUrl: url, deliverySignedAt: now, deliverySignedByName: input.signerName };
+
+    const updated = await entriesRepository.update(id, data);
+
+    await entriesRepository.createHistoryEvent({
+      vehicleEntryId: id,
+      eventType: 'NOTE_ADDED',
+      description: `${input.type === 'INTAKE' ? 'Intake' : 'Delivery'} signature captured, signed by ${input.signerName}.`,
+    });
 
     return updated;
   },

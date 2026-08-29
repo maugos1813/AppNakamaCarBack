@@ -20,6 +20,9 @@ import { clientFleetRouter } from '../modules/clientFleet/clientFleet.routes';
 import { entryWorkRequestsRouter, workRequestsRouter } from '../modules/workRequests/workRequests.routes';
 import { inventoryRouter } from '../modules/inventory/inventory.routes';
 import { materialRequestsRouter } from '../modules/materialRequests/materialRequests.routes';
+import { remindersRouter } from '../modules/reminders/reminders.routes';
+import { reportsRouter } from '../modules/reports/reports.routes';
+import { deviceTokensRouter } from '../modules/deviceTokens/deviceTokens.routes';
 
 // Central mount point for every feature module's router.
 export const apiRouter = Router();
@@ -51,6 +54,9 @@ apiRouter.use('/work-requests', workRequestsRouter);
 apiRouter.use('/inventory-items', inventoryRouter);
 apiRouter.use('/material-requests', materialRequestsRouter);
 apiRouter.use('/notifications', staffNotificationsRouter);
+apiRouter.use('/reminders', remindersRouter);
+apiRouter.use('/reports', reportsRouter);
+apiRouter.use('/device-tokens', deviceTokensRouter);
 apiRouter.use('/dashboard', dashboardRouter);
 apiRouter.use('/finance', financeRouter);
 apiRouter.use('/client/:token', clientPortalRouter);

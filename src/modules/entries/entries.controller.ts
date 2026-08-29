@@ -2,6 +2,7 @@ import type { Request, Response } from 'express';
 import { sendSuccess } from '../../utils/ApiResponse';
 import { entriesService } from './entries.service';
 import {
+  captureSignatureSchema,
   changeEntryStatusSchema,
   createEntrySchema,
   listEntriesQuerySchema,
@@ -46,6 +47,12 @@ export const entriesController = {
     const input = changeEntryStatusSchema.parse(req.body);
     const entry = await entriesService.changeStatus(req.params.id as string, input, req.user!.id);
     sendSuccess(res, { message: 'Vehicle entry status updated successfully.', data: entry });
+  },
+
+  async captureSignature(req: Request, res: Response) {
+    const input = captureSignatureSchema.parse(req.body);
+    const entry = await entriesService.captureSignature(req.params.id as string, input, { role: req.user!.role });
+    sendSuccess(res, { message: 'Signature captured successfully.', data: entry });
   },
 
   async requestEstimateApproval(req: Request, res: Response) {

@@ -39,6 +39,11 @@ const envSchema = z.object({
   // `${FRONTEND_URL}/track/<token>`.
   FRONTEND_URL: z.string().url().default('http://localhost:5173'),
 
+  // Firebase Cloud Messaging service account (push to the Android app) — the
+  // whole downloaded JSON key, as one line. Optional: push is silently
+  // skipped wherever it's unset (local dev without it, etc.).
+  FIREBASE_SERVICE_ACCOUNT: z.string().optional(),
+
   // Issuer details printed on invoice PDFs. Placeholders by default —
   // update these (Render env vars, no code change needed) with the real
   // business registration details before issuing real invoices.

@@ -28,6 +28,15 @@ export const changeEntryStatusSchema = z.object({
   notes: z.string().optional(),
 });
 
+// Captured in person on a staff device (signature pad), sent up as a PNG
+// data URL rather than a multipart file since it's canvas-generated, not a
+// user-picked file.
+export const captureSignatureSchema = z.object({
+  type: z.enum(['INTAKE', 'DELIVERY']),
+  signerName: z.string().min(1, 'signerName is required.'),
+  imageDataUrl: z.string().startsWith('data:image/', 'imageDataUrl must be an image data URL.'),
+});
+
 export const listEntriesQuerySchema = z.object({
   vehicleId: z.string().optional(),
   clientId: z.string().optional(),
@@ -42,4 +51,5 @@ export const listEntriesQuerySchema = z.object({
 export type CreateEntryInput = z.infer<typeof createEntrySchema>;
 export type UpdateEntryInput = z.infer<typeof updateEntrySchema>;
 export type ChangeEntryStatusInput = z.infer<typeof changeEntryStatusSchema>;
+export type CaptureSignatureInput = z.infer<typeof captureSignatureSchema>;
 export type ListEntriesQuery = z.infer<typeof listEntriesQuerySchema>;
