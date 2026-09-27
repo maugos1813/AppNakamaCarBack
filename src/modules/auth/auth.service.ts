@@ -3,12 +3,13 @@ import { ApiError } from '../../utils/ApiError';
 import { env } from '../../config/env';
 import { signAccessToken } from '../../lib/jwt';
 import { buildPasswordResetUrl, verifyPasswordResetToken } from '../../lib/passwordResetToken';
+import { verifySsoTicket } from '../../lib/ssoTicket';
 import { sendEmail } from '../../lib/email';
 import { logger } from '../../lib/logger';
 import { usersRepository } from '../users/users.repository';
 import { toPublicUser } from '../users/users.service';
 import { buildEmailHtml } from '../notifications/notifications.service';
-import type { ForgotPasswordInput, LoginInput, ResetPasswordInput } from './auth.validation';
+import type { ForgotPasswordInput, LoginInput, ResetPasswordInput, SsoInput } from './auth.validation';
 
 export const authService = {
   async login(input: LoginInput) {
@@ -23,6 +24,31 @@ export const authService = {
     const isPasswordValid = await bcrypt.compare(input.password, user.passwordHash);
     if (!isPasswordValid) {
       throw ApiError.unauthorized('Invalid email or password.');
+    }
+
+    const updatedUser = await usersRepository.update(user.id, { lastLoginAt: new Date() });
+    const accessToken = signAccessToken(user.id);
+
+    return { accessToken, user: toPublicUser(updatedUser) };
+  },
+
+  async sso(input: SsoInput) {
+    let email: string;
+    try {
+      ({ email } = verifySsoTicket(input.ticket));
+    } catch {
+      throw ApiError.unauthorized('Invalid or expired access ticket.');
+    }
+
+    const user = await usersRepository.findByEmail(email);
+
+    // No auto-provisioning on purpose: a ticket only proves the person authenticated
+    // with OneSystec, not that they should have an account here. If nobody created
+    // one for them yet, they need to ask a NakamaCar admin to add it first.
+    if (!user || !user.isActive) {
+      throw ApiError.notFound(
+        'No account exists here for that email yet. Ask an administrator to create one.',
+      );
     }
 
     const updatedUser = await usersRepository.update(user.id, { lastLoginAt: new Date() });

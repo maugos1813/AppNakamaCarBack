@@ -18,6 +18,12 @@ const envSchema = z.object({
   JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters long.'),
   JWT_EXPIRES_IN: z.string().default('12h'),
 
+  // Shared secret for validating single sign-on tickets minted by OneSystec (the
+  // portal users log into before reaching this app) — must be the exact same value
+  // configured there. Left unset, POST /auth/sso rejects every ticket with 401;
+  // normal email/password login is unaffected.
+  SSO_SHARED_SECRET: z.string().optional(),
+
   // Cloudflare R2 (S3-compatible object storage) for vehicle photos.
   R2_ACCOUNT_ID: z.string().min(1),
   R2_ACCESS_KEY_ID: z.string().min(1),

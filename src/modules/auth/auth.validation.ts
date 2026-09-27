@@ -18,6 +18,11 @@ export const resetPasswordSchema = z.object({
     .regex(/[0-9]/, 'Password must contain at least one number.'),
 });
 
+export const ssoSchema = z.object({
+  ticket: z.string().min(10, 'ticket is required.').max(4096),
+});
+
 export type LoginInput = z.infer<typeof loginSchema>;
 export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
 export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
+export type SsoInput = z.infer<typeof ssoSchema>;
