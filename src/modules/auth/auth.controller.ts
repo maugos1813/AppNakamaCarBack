@@ -1,12 +1,18 @@
 import type { Request, Response } from 'express';
 import { sendSuccess } from '../../utils/ApiResponse';
 import { authService } from './auth.service';
-import { forgotPasswordSchema, loginSchema, resetPasswordSchema } from './auth.validation';
+import { forgotPasswordSchema, loginSchema, resetPasswordSchema, ssoSchema } from './auth.validation';
 
 export const authController = {
   async login(req: Request, res: Response) {
     const input = loginSchema.parse(req.body);
     const result = await authService.login(input);
+    sendSuccess(res, { message: 'Login successful.', data: result });
+  },
+
+  async sso(req: Request, res: Response) {
+    const input = ssoSchema.parse(req.body);
+    const result = await authService.sso(input);
     sendSuccess(res, { message: 'Login successful.', data: result });
   },
 

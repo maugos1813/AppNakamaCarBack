@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { registry, idParam, entryIdParam, successEnvelope, jsonContent, errorResponses, AUTH } from './registry';
 import { reg } from './helpers';
 
-import { loginSchema } from '../../modules/auth/auth.validation';
+import { loginSchema, ssoSchema } from '../../modules/auth/auth.validation';
 import {
   createUserSchema,
   updateUserSchema,
@@ -41,6 +41,15 @@ reg({
   summary: 'Login with email and password, returns a JWT access token.',
   auth: false,
   body: loginSchema,
+  successSchema: z.object({ accessToken: z.string(), user: z.record(z.string(), z.unknown()) }),
+});
+reg({
+  method: 'post',
+  path: '/api/v1/auth/sso',
+  tags: ['Auth'],
+  summary: 'Exchange a single sign-on ticket from OneSystec for a JWT access token.',
+  auth: false,
+  body: ssoSchema,
   successSchema: z.object({ accessToken: z.string(), user: z.record(z.string(), z.unknown()) }),
 });
 reg({
